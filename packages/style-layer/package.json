@@ -1,8 +1,34 @@
 {
   "name": "@uno-pc/style-layer",
   "version": "0.0.1",
-  "description": "基于 CSS Cascade Layers 的样式分层转换",
+  "description": "Compile-time CSS Cascade Layers transformer — scopes and layers component styles via `@layer` using a Rust + napi native module for Rsbuild & Vite.",
+  "keywords": [
+    "css",
+    "cascade-layers",
+    "css-layers",
+    "@layer",
+    "styling",
+    "scoped-styles",
+    "compiler",
+    "rust",
+    "napi",
+    "rsbuild",
+    "vite"
+  ],
+  "author": "itmanyong <itmanyong@gmail.com>",
+  "contributors": [
+    "itmanyong <itmanyong@gmail.com>"
+  ],
   "license": "ISC",
+  "homepage": "https://github.com/itmanyong/uno-toolkit/tree/main/packages/style-layer#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/itmanyong/uno-toolkit.git",
+    "directory": "packages/style-layer"
+  },
+  "bugs": {
+    "url": "https://github.com/itmanyong/uno-toolkit/issues"
+  },
   "type": "module",
   "files": [
     "dist",
@@ -10,6 +36,7 @@
     "README.md",
     "package.json"
   ],
+  "types": "./dist/types/index.d.ts",
   "engines": {
     "node": ">=22.12.0"
   },
@@ -32,6 +59,7 @@
     "./package.json": "./package.json"
   },
   "publishConfig": {
+    "access": "public",
     "exports": {
       ".": {
         "types": "./dist/types/index.d.ts",

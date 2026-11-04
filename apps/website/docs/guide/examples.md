@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | `@uno-pc/jsx-directive` | `examples/jsx-directive-all` | React + Rsbuild | [/plugins/jsx-directive](/plugins/jsx-directive) |
 | `@uno-pc/style-layer` | `examples/style-layer-all` | Vanilla TS + CSS + Rsbuild | [/plugins/style-layer](/plugins/style-layer) |
-| `@uno-pc/signals-transform` | `examples/signals-transform` | React + Preact Signals + Rsbuild | [/plugins/signals-transform](/plugins/signals-transform) |
+| `@uno-pc/signals-transform` | `examples/signals-transform-all` | React + Preact Signals + Rsbuild | [/plugins/signals-transform](/plugins/signals-transform) |
 
 三个示例都使用 Rsbuild，因此文档中的完整示例统一采用 `XxxRsbuild` 入口；Vite 用法在各插件文档的「安装与配置」中给出。
 
@@ -25,7 +25,7 @@ pnpm build        # 生产构建，产物在该示例的 dist 目录
 pnpm preview      # 预览构建产物
 ```
 
-另外两个示例把目录名换成 `examples/style-layer-all` 或 `examples/signals-transform` 即可。
+另外两个示例把目录名换成 `examples/style-layer-all` 或 `examples/signals-transform-all` 即可。
 
 ## 各示例的演示内容
 
@@ -49,7 +49,7 @@ pnpm preview      # 预览构建产物
 | 构建产物的 CSS | 可见 `@layer vendor` 与 `@layer application` 包裹的规则 |
 | 把 `skipIfLayerExists` 改为 `false` | 可对比含命名 `@layer` 的 CSS 在两种配置下的产物差异 |
 
-### examples/signals-transform
+### examples/signals-transform-all
 
 `rstack.config.ts` 以 `mode: "auto"` 注册插件。组件只访问 `count.value`，没有手写任何跟踪代码；自定义 Hook `useDoubledCount` 用 `@useSignals` 显式标记。
 
@@ -65,6 +65,6 @@ pnpm preview      # 预览构建产物
 | --- | --- |
 | `jsx-directive-all` | 在 `dist` 的 JS 产物中检索不到 `v-if` 等指令名，取而代之的是条件表达式与 `display` 赋值 |
 | `style-layer-all` | 在 `dist` 的 CSS 产物中可见 `@layer vendor` 与 `@layer application` |
-| `signals-transform` | `dist` 的 JS 产物包含 `@preact/signals-react/runtime` 运行时代码与 `try` / `finally` 结构；生产压缩会重命名 `useSignals`，可用插件核心 API `transformSignals` 查看注入后的源码 |
+| `signals-transform-all` | `dist` 的 JS 产物包含 `@preact/signals-react/runtime` 运行时代码与 `try` / `finally` 结构；生产压缩会重命名 `useSignals`，可用插件核心 API `transformSignals` 查看注入后的源码 |
 
 如果希望看到未经压缩的转换结果，可以直接调用各插件导出的核心 API（`transformDirectives`、`transformSignals`、`resolveStyleLayer`）对源码做一次转换。

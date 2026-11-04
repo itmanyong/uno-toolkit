@@ -1,6 +1,39 @@
 {
-  "type": "module",
+  "name": "uno-toolkit",
   "private": true,
+  "type": "module",
+  "description": "Uno Toolkit 的 monorepo 根工作区",
+  "keywords": [
+    "monorepo",
+    "toolkit",
+    "rsbuild",
+    "vite",
+    "plugin",
+    "jsx-directive",
+    "signals",
+    "css-cascade-layers",
+    "rspress",
+    "docs"
+  ],
+  "author": "itmanyong <itmanyong@gmail.com>",
+  "contributors": [
+    "itmanyong <itmanyong@gmail.com>"
+  ],
+  "license": "ISC",
+  "homepage": "https://github.com/itmanyong/uno-toolkit#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/itmanyong/uno-toolkit.git",
+    "directory": "."
+  },
+  "bugs": {
+    "url": "https://github.com/itmanyong/uno-toolkit/issues"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "examples/*"
+  ],
   "scripts": {
     "turbo": "turbo",
     "dev": "turbo dev",
@@ -13,11 +46,12 @@
     "check": "turbo typecheck lint",
     "changeset": "changeset",
     "version:packages": "changeset version",
-    "release": "changeset publish"
+    "release": "changeset publish",
+    "release:ci": "changeset version && changeset publish"
   },
   "dependencies": {},
   "devDependencies": {
-    "@changesets/cli": "^3.0.3",
+    "@changesets/cli": "catalog:",
     "@types/node": "catalog:",
     "rstack": "catalog:",
     "turbo": "catalog:",

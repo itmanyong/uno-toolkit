@@ -7,7 +7,7 @@
 在仓库根目录执行 `pnpm install`，然后：
 
 ```bash
-cd examples/signals-transform
+cd examples/signals-transform-all
 pnpm dev
 ```
 

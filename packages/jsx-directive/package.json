@@ -1,21 +1,39 @@
 {
   "name": "@uno-pc/jsx-directive",
   "version": "0.0.1",
-  "description": "JSX 指令的 Rust 编译期转换",
-  "email": "itmanyong@gmail.com",
-  "contributors": [
-    {
-      "name": "itmanyong",
-      "email": "itmanyong@gmail.com"
-    }
-  ],
+  "description": "Compile-time JSX directive transformer — `v-if` / `v-else-if` / `v-else`, `v-for`, `v-show` control flow as JSX attributes, powered by a Rust + napi native module for Rsbuild & Vite.",
   "keywords": [
     "jsx",
-    "compiler",
     "directive",
-    "rust"
+    "v-if",
+    "v-else",
+    "v-else-if",
+    "v-for",
+    "v-show",
+    "control-flow",
+    "compiler",
+    "rust",
+    "napi",
+    "rsbuild",
+    "vite",
+    "react",
+    "preact"
+  ],
+  "author": "itmanyong <itmanyong@gmail.com>",
+  "contributors": [
+    "itmanyong <itmanyong@gmail.com>"
   ],
   "license": "ISC",
+  "homepage": "https://github.com/itmanyong/uno-toolkit/tree/main/packages/jsx-directive#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/itmanyong/uno-toolkit.git",
+    "directory": "packages/jsx-directive"
+  },
+  "bugs": {
+    "url": "https://github.com/itmanyong/uno-toolkit/issues"
+  },
+  "type": "module",
   "files": [
     "dist",
     "native",
@@ -23,7 +41,6 @@
     "README.md",
     "package.json"
   ],
-  "type": "module",
   "types": "./types/global.d.ts",
   "engines": {
     "node": ">=22.12.0"
@@ -47,6 +64,7 @@
     "./package.json": "./package.json"
   },
   "publishConfig": {
+    "access": "public",
     "exports": {
       ".": {
         "types": "./dist/types/index.d.ts",

@@ -1,10 +1,11 @@
 # 全自动部署工作流（napi 多平台 + Changesets）
 #
 # 触发：推送到 main（命中 packages / 文档 / 示例 / changesets / 工作流 / lockfile 等路径）或手动触发。
-# 严格顺序：
-#   1) build-native：矩阵在 ubuntu / ubuntu-arm / macos / windows 上编译全部 7 个平台的原生 .node
-#   2) release：归集原生二进制 → changeset version 提升版本 → 构建 JS → changeset publish 发布到 npm
-#   3) deploy-site：构建文档站（DOC_BASE=/uno-toolkit/）并部署到 GitHub Pages
+# 并行发布（无先后顺序）：
+#   - build-native：矩阵在 ubuntu / ubuntu-arm / macos / windows 上编译全部 7 个平台的原生 .node
+#   - release    ：归集原生二进制 → changeset version 提升版本 → 构建 JS → changeset publish 发布三个插件到 npm
+#   - deploy-site：构建文档站（DOC_BASE=/uno-toolkit/）并部署到 GitHub Pages
+#   说明：release 与 deploy-site 互不依赖、同时触发，实现「文档站点 + 三个插件」同步发布。
 #
 # 启用前的一次性配置：
 #   - 仓库 Settings → Secrets → Actions 添加 NPM_TOKEN（@uno-pc 作用域、publish 权限）
@@ -182,10 +183,9 @@ jobs:
             git push
           fi
 
-  # ── 阶段三：构建并部署文档站点（依赖插件发布完成）──────────────────────
+  # ── 与 release 并行：构建并部署文档站点（无先后顺序）────────────────────
   deploy-site:
     name: Build & deploy docs site
-    needs: release
     runs-on: ubuntu-latest
     environment:
       name: github-pages

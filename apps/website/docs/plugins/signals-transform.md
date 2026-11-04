@@ -95,7 +95,7 @@ export default defineConfig({
 
 ## 完整使用示例
 
-以下代码来自可运行示例 [`examples/signals-transform`](/guide/examples)，演示 `auto` 模式下组件自动获得信号跟踪能力，并用一个自定义 Hook 展示派生值。
+以下代码来自可运行示例 [`examples/signals-transform-all`](/guide/examples)，演示 `auto` 模式下组件自动获得信号跟踪能力，并用一个自定义 Hook 展示派生值。
 
 ### 构建配置 `rstack.config.ts`
 
@@ -213,7 +213,7 @@ const TextRenderNode = () => {
 ### 运行与观察
 
 ```sh
-cd examples/signals-transform
+cd examples/signals-transform-all
 pnpm dev
 ```
 
@@ -228,4 +228,4 @@ pnpm dev
 
 ## 可运行示例
 
-完整项目见[可运行示例](/guide/examples)中的 `examples/signals-transform`，可直接启动并观察信号驱动的更新效果。
+完整项目见[可运行示例](/guide/examples)中的 `examples/signals-transform-all`，可直接启动并观察信号驱动的更新效果。
