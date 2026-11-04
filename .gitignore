@@ -137,3 +137,9 @@ dist
 
 # Turbo
 .turbo
+
+# Workbuddy
+.workbuddy/
+
+# rsrack
+.rstack/

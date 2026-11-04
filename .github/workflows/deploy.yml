@@ -1,0 +1,127 @@
+# 全自动部署工作流
+#
+# 触发：推送到 main（仅当 packages / 文档 / 锁文件等变更时）或手动触发。
+# 流程：
+#   1) 依次构建并发布三个插件到 npmjs.org（@uno-pc/*，公开）
+#   2) 待插件发布完成后，构建文档站点并部署到 GitHub Pages
+#
+# 首次使用前需完成两项一次性配置（见仓库 Wiki / PR 说明）：
+#   - 仓库 Settings → Secrets → Actions 添加 NPM_TOKEN（@uno-pc 组织、具备 publish 权限）
+#   - 仓库 Settings → Pages → Build and deployment → Source 选择 "GitHub Actions"
+#
+# 说明：原生扩展仅在 CI 的 Linux runner 上编译，发布出去的包为 Linux 平台专用；
+#       跨平台（macOS / Windows）需要后续引入按平台预编译方案（napi 多平台 optionalDependencies）。
+
+name: Deploy Docs & Publish Packages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/**"
+      - "apps/website/**"
+      - "examples/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+# 发布需要写 npm；部署 Pages 需要 pages 与 id-token 权限。
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只允许一个部署，避免 Pages 产物互相覆盖。
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "24"
+  PNPM_VERSION: "12.15.0"
+
+jobs:
+  # 阶段一：依次构建并发布三个插件到 npmjs.org
+  publish-packages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org"
+
+      # 原生扩展（.node）由 Rust 编译，需要 Cargo 工具链
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build & publish plugins (jsx-directive → style-layer → signals-transform)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          for pkg in jsx-directive style-layer signals-transform; do
+            name="@uno-pc/$pkg"
+            echo "==> build $name"
+            pnpm --filter "$name" build
+            version=$(node -p "require('./packages/$pkg/package.json').version")
+            if npm view "$name@$version" >/dev/null 2>&1; then
+              echo "版本 $version 已存在于 registry，跳过 $name 发布"
+            else
+              ( cd "packages/$pkg" && npm publish --access public --no-git-checks )
+            fi
+          done
+
+  # 阶段二：构建并部署文档站点到 GitHub Pages（依赖插件发布完成）
+  deploy-site:
+    needs: publish-packages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build website
+        # GitHub Pages 项目页根路径为 /uno-toolkit/，通过 DOC_BASE 注入
+        env:
+          DOC_BASE: /uno-toolkit/
+        run: pnpm --filter website build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/website/doc_build
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

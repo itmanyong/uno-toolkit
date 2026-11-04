@@ -2,6 +2,9 @@ import { define } from "rstack";
 
 define.doc({
   root: "docs",
+  // GitHub Pages 项目页以 /uno-toolkit/ 作为站点根路径；
+  // 本地开发保持 "/"，CI 构建时通过 DOC_BASE 注入。
+  base: process.env.DOC_BASE ?? "/",
   title: "Uno Toolkit 文档",
   description: "三个构建期转换插件的使用文档：功能说明、安装配置与完整示例。",
   lang: "zh",
