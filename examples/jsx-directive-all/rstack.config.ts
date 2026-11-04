@@ -5,13 +5,30 @@ define.app(async () => {
   const { pluginReact } = await import("@rsbuild/plugin-react");
   return {
     plugins: [
-      pluginReact(),
       JsxDirectiveRsbuild({
         prefix: "v-",
         formats: ["jsx", "tsx"],
         ifFallback: "null",
-        show: { property: "display", whenTrue: "undefined", whenFalse: "'none'" },
+        show: {
+          property: "display",
+          whenTrue: "undefined",
+          whenFalse: "'none'",
+        },
+      }),
+      pluginReact({
+        reactCompiler: true,
       }),
     ],
+    html: {
+      tags: [
+        {
+          tag: "script",
+          attrs: {
+            crossOrigin: "anonymous",
+            src: "//unpkg.com/react-scan/dist/auto.global.js",
+          },
+        },
+      ],
+    },
   };
 });

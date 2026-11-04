@@ -12,5 +12,16 @@ define.app(async () => {
         formats: ["js", "jsx", "ts", "tsx"],
       }),
     ],
+    html: {
+      tags: [
+        {
+          tag: "script",
+          attrs: {
+            crossOrigin: "anonymous",
+            src: "//unpkg.com/react-scan/dist/auto.global.js",
+          },
+        },
+      ],
+    },
   };
 });

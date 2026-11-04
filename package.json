@@ -10,14 +10,18 @@
     "typecheck": "turbo typecheck",
     "lint": "turbo lint",
     "format": "turbo fmt",
-    "check": "turbo typecheck lint"
+    "check": "turbo typecheck lint",
+    "changeset": "changeset",
+    "version:packages": "changeset version",
+    "release": "changeset publish"
   },
   "dependencies": {},
   "devDependencies": {
+    "@changesets/cli": "^3.0.3",
     "@types/node": "catalog:",
+    "rstack": "catalog:",
     "turbo": "catalog:",
-    "typescript": "catalog:",
-    "rstack": "catalog:"
+    "typescript": "catalog:"
   },
   "devEngines": {
     "packageManager": {

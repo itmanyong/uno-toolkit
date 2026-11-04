@@ -52,6 +52,7 @@
     "dev": "pnpm build:native && rs lib -w",
     "build": "pnpm build:native && rs lib",
     "build:native": "node scripts/build-native.mjs",
+    "build:js": "rs lib",
     "test": "pnpm build:native && pnpm test:rust && rs test",
     "test:rust": "cargo test --manifest-path native-rust/Cargo.toml",
     "typecheck": "tsc --noEmit -p tsconfig.test.json",

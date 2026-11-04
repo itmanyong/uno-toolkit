@@ -113,7 +113,7 @@ define.app(async () => {
   const { pluginReact } = await import("@rsbuild/plugin-react");
   return {
     plugins: [
-      pluginReact(),
+      // 尽可能放置到最前面 - 必须在 React 插件之前
       JsxDirectiveRsbuild({
         prefix: "v-",
         formats: ["jsx", "tsx"],
@@ -124,6 +124,7 @@ define.app(async () => {
           whenFalse: "'none'",
         },
       }),
+      pluginReact(),
     ],
   };
 });
