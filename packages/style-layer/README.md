@@ -2,6 +2,8 @@
 
 使用 Rust 在构建期将 CSS 文件放入指定的 CSS Cascade Layer，并可为命中的 CSS `@import` 添加 `layer(name)`。提供 Vite 和 Rsbuild 插件。
 
+- 📖 在线文档：<https://itmanyong.github.io/uno-toolkit/plugins/style-layer>
+
 ## 环境要求
 
 - Node.js `>=22.12.0`

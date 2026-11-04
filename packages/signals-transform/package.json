@@ -21,7 +21,7 @@
     "itmanyong <itmanyong@gmail.com>"
   ],
   "license": "ISC",
-  "homepage": "https://github.com/itmanyong/uno-toolkit/tree/main/packages/signals-transform#readme",
+  "homepage": "https://www.npmjs.com/package/@uno-pc/signals-transform",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/itmanyong/uno-toolkit.git",

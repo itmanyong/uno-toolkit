@@ -2,6 +2,8 @@
 
 使用 Rust 与 tree-sitter 在构建期转换 React JSX/TSX 指令。提供 `v-if`、`v-else-if`、`v-else` 条件分支和 `v-show` 显示控制，并提供 Vite、Rsbuild 插件。
 
+- 📖 在线文档：<https://itmanyong.github.io/uno-toolkit/plugins/jsx-directive>
+
 ## 环境要求
 
 - Node.js `>=22.12.0`

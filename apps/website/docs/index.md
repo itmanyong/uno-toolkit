@@ -26,3 +26,12 @@ features:
   - title: "可运行示例"
     details: 三个独立示例项目分别演示完整用法，可直接启动并查看构建产物中的转换结果。
 ---
+
+## 资源
+
+- 📖 在线文档：<https://itmanyong.github.io/uno-toolkit/>
+
+- 包：
+  - **@uno-pc/jsx-directive** — [npm](https://www.npmjs.com/package/@uno-pc/jsx-directive) · [npmx](https://npmx.dev/package/@uno-pc/jsx-directive)
+  - **@uno-pc/style-layer** — [npm](https://www.npmjs.com/package/@uno-pc/style-layer) · [npmx](https://npmx.dev/package/@uno-pc/style-layer)
+  - **@uno-pc/signals-transform** — [npm](https://www.npmjs.com/package/@uno-pc/signals-transform) · [npmx](https://npmx.dev/package/@uno-pc/signals-transform)

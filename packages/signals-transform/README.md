@@ -2,6 +2,8 @@
 
 为 Preact Signals React 提供 Rust 驱动的编译期转换。转换器可为符合条件的函数组件或自定义 Hook 注入 `useSignals` 调用，并使用 `try/finally` 确保跟踪在函数退出时结束。
 
+- 📖 在线文档：<https://itmanyong.github.io/uno-toolkit/plugins/signals-transform>
+
 ## 环境要求
 
 - Node.js `>=22.12.0`
