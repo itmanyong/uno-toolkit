@@ -1,0 +1,101 @@
+{
+  "name": "@uno-pc/jsx-directive",
+  "version": "0.0.1",
+  "description": "JSX 指令的 Rust 编译期转换",
+  "email": "itmanyong@gmail.com",
+  "contributors": [
+    {
+      "name": "itmanyong",
+      "email": "itmanyong@gmail.com"
+    }
+  ],
+  "keywords": [
+    "jsx",
+    "compiler",
+    "directive",
+    "rust"
+  ],
+  "license": "ISC",
+  "files": [
+    "dist",
+    "native",
+    "types",
+    "README.md",
+    "package.json"
+  ],
+  "type": "module",
+  "types": "./types/global.d.ts",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./vite": {
+      "types": "./dist/types/plugins/vite.d.ts",
+      "development": "./src/plugins/vite.ts",
+      "default": "./dist/plugins/vite.js"
+    },
+    "./rsbuild": {
+      "types": "./dist/types/plugins/rsbuild.d.ts",
+      "development": "./src/plugins/rsbuild.ts",
+      "default": "./dist/plugins/rsbuild.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./vite": {
+        "types": "./dist/types/plugins/vite.d.ts",
+        "default": "./dist/plugins/vite.js"
+      },
+      "./rsbuild": {
+        "types": "./dist/types/plugins/rsbuild.d.ts",
+        "default": "./dist/plugins/rsbuild.js"
+      },
+      "./package.json": "./package.json"
+    }
+  },
+  "scripts": {
+    "dev": "pnpm build:native && rs lib -w",
+    "build": "pnpm build:native && rs lib",
+    "build:native": "node scripts/build-native.mjs",
+    "test": "pnpm build:native && pnpm test:rust && rs test",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json",
+    "test:rust": "cargo test --manifest-path native-rust/Cargo.toml",
+    "doc": "rs doc",
+    "lint": "rs lint",
+    "fmt": "rs fmt"
+  },
+  "peerDependencies": {
+    "@types/react": ">=18",
+    "@rsbuild/core": ">=2.3.0 <3",
+    "vite": "^6.0.0 || ^7.0.0 || ^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@rsbuild/core": {
+      "optional": true
+    },
+    "@types/react": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@rsbuild/core": "catalog:",
+    "rstack": "catalog:",
+    "vite": "catalog:",
+    "typescript": "catalog:"
+  }
+}

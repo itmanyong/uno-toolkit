@@ -1,0 +1,20 @@
+@import "./vendor.css";
+
+body {
+  margin: 0;
+  color: #fff;
+  font-family: Inter, Helvetica, Arial, sans-serif;
+  background-image: linear-gradient(to bottom, #020917, #101725);
+}
+
+.content {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+
+.box {
+  padding: 12px 16px;
+  border: 2px solid #8ab4f8;
+  border-color: #8ab4f8;
+}

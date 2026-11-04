@@ -1,0 +1,38 @@
+{
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "turbo": "turbo",
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "preview": "turbo preview",
+    "test": "turbo test",
+    "typecheck": "turbo typecheck",
+    "lint": "turbo lint",
+    "format": "turbo fmt",
+    "check": "turbo typecheck lint"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:",
+    "rstack": "catalog:"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.15.0",
+      "onFail": "download"
+    }
+  },
+  "engines": {
+    "node": ">=24",
+    "pnpm": ">=10"
+  },
+  "volta": {
+    "node": "24.22.1",
+    "pnpm": "12.15.0"
+  },
+  "packageManager": "pnpm@12.15.0"
+}

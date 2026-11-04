@@ -1,0 +1,86 @@
+{
+  "name": "@uno-pc/signals-transform",
+  "version": "0.0.1",
+  "description": "Preact Signals React 的 Rust 编译期转换",
+  "license": "ISC",
+  "type": "module",
+  "files": [
+    "dist",
+    "native",
+    "README.md",
+    "package.json"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./vite": {
+      "types": "./dist/types/plugins/vite.d.ts",
+      "development": "./src/plugins/vite.ts",
+      "default": "./dist/plugins/vite.js"
+    },
+    "./rsbuild": {
+      "types": "./dist/types/plugins/rsbuild.d.ts",
+      "development": "./src/plugins/rsbuild.ts",
+      "default": "./dist/plugins/rsbuild.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./vite": {
+        "types": "./dist/types/plugins/vite.d.ts",
+        "default": "./dist/plugins/vite.js"
+      },
+      "./rsbuild": {
+        "types": "./dist/types/plugins/rsbuild.d.ts",
+        "default": "./dist/plugins/rsbuild.js"
+      },
+      "./package.json": "./package.json"
+    }
+  },
+  "scripts": {
+    "dev": "pnpm build:native && rs lib -w",
+    "build": "pnpm build:native && rs lib",
+    "build:native": "node scripts/build-native.mjs",
+    "test": "pnpm build:native && pnpm test:rust && rs test",
+    "test:rust": "cargo test --manifest-path native-rust/Cargo.toml",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json",
+    "lint": "rs lint",
+    "fmt": "rs fmt"
+  },
+  "peerDependencies": {
+    "@preact/signals-react": ">=3",
+    "@rsbuild/core": ">=2.3.0 <3",
+    "vite": "^6.0.0 || ^7.0.0 || ^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@preact/signals-react": {
+      "optional": true
+    },
+    "@rsbuild/core": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@preact/signals-react": "catalog:",
+    "@rsbuild/core": "catalog:",
+    "@types/node": "catalog:",
+    "rstack": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  },
+  "private": true
+}

@@ -1,0 +1,39 @@
+packages:
+  - "apps/*"
+  - "examples/*"
+  - "packages/*"
+
+allowBuilds:
+  "@parcel/watcher": true
+
+catalog:
+  "@types/node": "^26.6.5"
+  "@types/react": "^19.3.0"
+  "@types/react-dom": "19.3.0"
+  "@rsbuild/core": "^2.3.0"
+  "@rspress/core": "2.1.0-beta.2"
+  "@rsbuild/plugin-react": "2.1.1"
+  "typescript": "^7.1.0-beta"
+  "rstack": "0.9.0"
+  "unplugin-auto-import": "^21.1.0"
+  "turbo": "2.11.10"
+  "react": "19.3.1"
+  "react-dom": "19.3.1"
+  "@preact/signals-react": "3.12.0"
+  "vite": "8.3.5"
+
+minimumReleaseAgeExclude:
+  - "@rstackjs/cli-darwin-arm64@0.9.0"
+  - "@rstackjs/cli-darwin-x64@0.9.0"
+  - "@rstackjs/cli-linux-arm64-gnu@0.9.0"
+  - "@rstackjs/cli-linux-arm64-musl@0.9.0"
+  - "@rstackjs/cli-linux-ppc64-gnu@0.9.0"
+  - "@rstackjs/cli-linux-riscv64-gnu@0.9.0"
+  - "@rstackjs/cli-linux-riscv64-musl@0.9.0"
+  - "@rstackjs/cli-linux-s390x-gnu@0.9.0"
+  - "@rstackjs/cli-linux-x64-gnu@0.9.0"
+  - "@rstackjs/cli-linux-x64-musl@0.9.0"
+  - "@rstackjs/cli-win32-arm64-msvc@0.9.0"
+  - "@rstackjs/cli-win32-ia32-msvc@0.9.0"
+  - "@rstackjs/cli-win32-x64-msvc@0.9.0"
+  - rstack@0.9.0
