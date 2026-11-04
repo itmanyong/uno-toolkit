@@ -1,3 +1,37 @@
+fn fresh_parameter(source: &str, base: &str) -> String {
+    if !source.contains(base) {
+        return base.to_string();
+    }
+    let mut suffix = 1;
+    loop {
+        let candidate = format!("{base}{suffix}");
+        if !source.contains(&candidate) {
+            return candidate;
+        }
+        suffix += 1;
+    }
+}
+
+fn jsx_can_start(before: &str) -> bool {
+    let before = before.trim_end();
+    before.is_empty()
+        || ["=>", "&&", "||"]
+            .iter()
+            .any(|operator| before.ends_with(operator))
+        || before.ends_with(['=', '(', '[', '{', ',', ':', ';', '?'])
+        || ["return", "throw", "yield"]
+            .iter()
+            .any(|keyword| before.ends_with(keyword))
+}
+
+fn looks_like_generic(source: &str, start: usize) -> bool {
+    let Some(relative_end) = source[start..].find('>') else {
+        return false;
+    };
+    let end = start + relative_end;
+    source[start + 1..end].contains(',') && source[end + 1..].trim_start().starts_with('(')
+}
+
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use serde::Deserialize;
@@ -92,6 +126,8 @@ pub fn jsx_directive(
         });
     }
 
+    let mut parse_source = code.as_bytes().to_vec();
+    normalize_shorthand(&code, &mut parse_source, 0, false);
     let tree = TSX_PARSER.with(|parser_cell| {
         let mut parser_slot = parser_cell
             .try_borrow_mut()
@@ -108,7 +144,7 @@ pub fn jsx_directive(
         parser_slot
             .as_mut()
             .expect("parser initialized")
-            .parse(&code, None)
+            .parse(&parse_source, None)
             .ok_or_else(|| Error::from_reason("Unable to parse JSX/TSX source"))
     })?;
     if tree.root_node().has_error() {
@@ -130,9 +166,164 @@ pub fn jsx_directive(
 }
 
 fn has_directive_candidate(source: &str, prefix: &str) -> bool {
-    ["if", "else-if", "else", "show"]
-        .iter()
-        .any(|directive| source.contains(&format!("{prefix}{directive}")))
+    [
+        "if", "else-if", "else", "show", "html", "text", "for", "bind", "model",
+    ]
+    .iter()
+    .any(|directive| source.contains(&format!("{prefix}{directive}")))
+        || (source.contains('<')
+            && source.match_indices(':').any(|(index, _)| {
+                index > 0
+                    && source.as_bytes()[index - 1].is_ascii_whitespace()
+                    && source.as_bytes().get(index + 1).is_some_and(|next| {
+                        next.is_ascii_alphabetic() || *next >= 128 || matches!(next, b'_' | b'$')
+                    })
+            }))
+}
+
+// 仅替换开标签属性位置的冒号，保持字节长度，以便 AST 偏移继续对应原始源码。
+fn normalize_shorthand(
+    source: &str,
+    output: &mut [u8],
+    mut index: usize,
+    expression: bool,
+) -> usize {
+    let bytes = source.as_bytes();
+    while index < bytes.len() {
+        match bytes[index] {
+            b'\'' | b'"' | b'`' => {
+                let quote = bytes[index];
+                index += 1;
+                while index < bytes.len() && bytes[index] != quote {
+                    if bytes[index] == b'\\' {
+                        index += 2;
+                    } else if quote == b'`' && bytes[index..].starts_with(b"${") {
+                        index = normalize_shorthand(source, output, index + 2, true);
+                    } else {
+                        index += 1;
+                    }
+                }
+                index += usize::from(index < bytes.len());
+            }
+            b'/' if bytes[index..].starts_with(b"//") => {
+                while index < bytes.len() && bytes[index] != b'\n' {
+                    index += 1;
+                }
+            }
+            b'/' if bytes[index..].starts_with(b"/*") => {
+                index += 2;
+                while index + 1 < bytes.len() && !bytes[index..].starts_with(b"*/") {
+                    index += 1;
+                }
+                index = (index + 2).min(bytes.len());
+            }
+            b'/' if regex_can_start(&source[..index]) => {
+                index += 1;
+                let mut character_class = false;
+                while index < bytes.len() {
+                    match bytes[index] {
+                        b'\\' => {
+                            index += 2;
+                            continue;
+                        }
+                        b'[' => character_class = true,
+                        b']' => character_class = false,
+                        b'/' if !character_class => {
+                            index += 1;
+                            break;
+                        }
+                        b'\n' => break,
+                        _ => {}
+                    }
+                    index += 1;
+                }
+            }
+            b'{' => index = normalize_shorthand(source, output, index + 1, true),
+            b'}' if expression => return index + 1,
+            b'<' if jsx_can_start(&source[..index])
+                && !looks_like_generic(source, index)
+                && bytes.get(index + 1).is_some_and(|next| {
+                    next.is_ascii_alphabetic() || matches!(next, b'_' | b'$' | b'>')
+                }) =>
+            {
+                index = normalize_jsx_tag(source, output, index);
+            }
+            _ => index += 1,
+        }
+    }
+    index
+}
+
+fn regex_can_start(before: &str) -> bool {
+    let before = before.trim_end();
+    before.is_empty()
+        || before.ends_with(['=', '(', '[', '{', ',', ':', ';', '!', '?', '&', '|'])
+        || ["return", "throw", "case", "yield"]
+            .iter()
+            .any(|word| before.ends_with(word))
+}
+
+fn normalize_jsx_tag(source: &str, output: &mut [u8], start: usize) -> usize {
+    let bytes = source.as_bytes();
+    let mut index = start + 1;
+    while index < bytes.len()
+        && (bytes[index].is_ascii_alphanumeric()
+            || bytes[index] >= 128
+            || matches!(bytes[index], b'_' | b'$' | b'-' | b'.' | b':'))
+    {
+        index += 1;
+    }
+    let tag = &source[start + 1..index];
+    while index < bytes.len() {
+        match bytes[index] {
+            b'\'' | b'"' => {
+                let quote = bytes[index];
+                index += 1;
+                while index < bytes.len() && bytes[index] != quote {
+                    index += 1;
+                }
+                index += usize::from(index < bytes.len());
+            }
+            b'{' => index = normalize_shorthand(source, output, index + 1, true),
+            b':' if index > start
+                && bytes[index - 1].is_ascii_whitespace()
+                && bytes.get(index + 1).is_some_and(|next| {
+                    next.is_ascii_alphabetic() || *next >= 128 || matches!(next, b'_' | b'$')
+                }) =>
+            {
+                output[index] = b'$';
+                index += 1;
+            }
+            b'>' => {
+                let self_closing = bytes[index - 1] == b'/';
+                index += 1;
+                if self_closing || !source[index..].contains(&format!("</{tag}")) {
+                    return index;
+                }
+                break;
+            }
+            _ => index += 1,
+        }
+    }
+    while index < bytes.len() {
+        if bytes[index..].starts_with(b"</") {
+            while index < bytes.len() && bytes[index] != b'>' {
+                index += 1;
+            }
+            return (index + 1).min(bytes.len());
+        }
+        match bytes[index] {
+            b'{' => index = normalize_shorthand(source, output, index + 1, true),
+            b'<' if bytes.get(index + 1).is_some_and(|next| {
+                next.is_ascii_alphabetic() || matches!(next, b'_' | b'$' | b'>')
+            }) =>
+            {
+                index = normalize_jsx_tag(source, output, index)
+            }
+            _ => index += 1,
+        }
+    }
+    index
 }
 
 fn render_node(
@@ -144,13 +335,50 @@ fn render_node(
 ) -> Result<String> {
     let kind = node.kind();
     if kind == "jsx_opening_element" || kind == "jsx_self_closing_element" {
-        return render_opening_element(node, source, config, warnings, strip_own_condition);
+        let rendered = render_opening_element(node, source, config, warnings, strip_own_condition)?;
+        return Ok(wrap_for(
+            node,
+            source,
+            config,
+            rendered,
+            strip_own_condition,
+        ));
     }
 
     let mut children = Vec::new();
     let mut cursor = node.walk();
     children.extend(node.named_children(&mut cursor));
     let mut edits = Vec::new();
+    if kind == "jsx_element" {
+        if let Some(opening) = opening_element(node) {
+            let attrs = attributes(opening);
+            let html = attrs.iter().find(|attr| {
+                attribute_name(**attr, source) == Some(&format!("{}html", config.prefix))
+            });
+            let text = attrs.iter().find(|attr| {
+                attribute_name(**attr, source) == Some(&format!("{}text", config.prefix))
+            });
+            if html.is_some() != text.is_some() {
+                let attribute = *html.or(text).expect("one content directive");
+                if let Some(expression) = attribute_expression(attribute, source) {
+                    if let Some(closing) = children
+                        .iter()
+                        .find(|child| child.kind() == "jsx_closing_element")
+                    {
+                        edits.push(Edit {
+                            start: opening.end_byte(),
+                            end: closing.start_byte(),
+                            replacement: if text.is_some() {
+                                format!("{{{expression}}}")
+                            } else {
+                                String::new()
+                            },
+                        });
+                    }
+                }
+            }
+        }
+    }
     let covered = if children.iter().any(|child| is_jsx_node(child.kind())) {
         add_sequence_edits(node, &children, source, config, warnings, &mut edits)?
     } else {
@@ -173,11 +401,13 @@ fn render_node(
         }
     }
 
-    Ok(apply_edits(
+    let rendered = apply_edits(source, node.start_byte(), node.end_byte(), edits);
+    Ok(wrap_for(
+        node,
         source,
-        node.start_byte(),
-        node.end_byte(),
-        edits,
+        config,
+        rendered,
+        strip_own_condition,
     ))
 }
 
@@ -439,6 +669,302 @@ fn attribute_expression(attribute: Node<'_>, source: &str) -> Option<String> {
     (!inner.is_empty()).then(|| inner.to_string())
 }
 
+fn attribute_value(attribute: Node<'_>, source: &str) -> Option<String> {
+    if let Some(expression) = attribute_expression(attribute, source) {
+        return Some(expression);
+    }
+    let value = attribute.named_child(1)?;
+    (value.kind() == "string").then(|| source[value.start_byte()..value.end_byte()].to_string())
+}
+
+fn loop_binding(attribute: Node<'_>, source: &str) -> Option<(String, String)> {
+    let value = attribute.named_child(1)?;
+    let raw = if value.kind() == "jsx_expression" {
+        &source[value.start_byte() + 1..value.end_byte() - 1]
+    } else {
+        return None;
+    };
+    let separator = raw
+        .match_indices("in")
+        .find(|(index, _)| {
+            raw[..*index].ends_with(char::is_whitespace)
+                && raw[*index + 2..].starts_with(char::is_whitespace)
+        })?
+        .0;
+    let params = raw[..separator].trim();
+    let params = params
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+        .unwrap_or(params);
+    let names: Vec<_> = params.split(',').map(str::trim).collect();
+    if !(1..=2).contains(&names.len()) || names.iter().any(|name| !is_identifier(name)) {
+        return None;
+    }
+    let iterable = raw[separator + 2..].trim();
+    if iterable.is_empty() {
+        return None;
+    }
+    let mut parser = Parser::new();
+    parser
+        .set_language(&tree_sitter_typescript::LANGUAGE_TSX.into())
+        .ok()?;
+    let expression = format!("({iterable}).map(({}) => null)", names.join(", "));
+    let tree = parser.parse(&expression, None)?;
+    if tree.root_node().has_error() || tree.root_node().named_child_count() != 1 {
+        return None;
+    }
+    Some((names.join(", "), iterable.to_string()))
+}
+
+fn is_identifier(value: &str) -> bool {
+    let mut chars = value.chars();
+    chars
+        .next()
+        .is_some_and(|ch| ch.is_alphabetic() || ch == '_' || ch == '$')
+        && chars.all(|ch| ch.is_alphanumeric() || ch == '_' || ch == '$')
+}
+
+fn wrap_for(
+    node: Node<'_>,
+    source: &str,
+    config: &Config,
+    rendered: String,
+    conditional_branch: bool,
+) -> String {
+    if !is_jsx_node(node.kind()) {
+        return rendered;
+    }
+    let binding = opening_element(node).and_then(|opening| {
+        attributes(opening).into_iter().find_map(|attr| {
+            (attribute_name(attr, source) == Some(&format!("{}for", config.prefix)))
+                .then(|| loop_binding(attr, source))
+                .flatten()
+        })
+    });
+    let Some((params, iterable)) = binding else {
+        return rendered;
+    };
+    let expression = format!("({iterable}).map(({params}) => ({rendered}))");
+    if !conditional_branch
+        && node
+            .parent()
+            .is_some_and(|parent| is_jsx_container(parent.kind()))
+    {
+        format!("{{{expression}}}")
+    } else {
+        format!("({expression})")
+    }
+}
+
+fn directive_expression(attribute: Node<'_>, source: &str) -> Option<String> {
+    attribute_expression(attribute, source)
+}
+
+fn model_binding(attribute: Node<'_>, source: &str) -> Option<(String, String)> {
+    let expression = attribute.named_child(1)?;
+    if expression.kind() != "jsx_expression" {
+        return None;
+    }
+    let mut cursor = expression.walk();
+    let value = expression
+        .named_children(&mut cursor)
+        .find(|child| child.kind() != "comment")?;
+    model_expression(value, source)
+}
+
+fn model_expression(value: Node<'_>, source: &str) -> Option<(String, String)> {
+    if value.kind() == "identifier" {
+        let value = source[value.start_byte()..value.end_byte()].to_string();
+        let mut uppercase = true;
+        let mut setter = String::from("set");
+        for ch in value.chars() {
+            if ch == '_' {
+                uppercase = true;
+            } else if uppercase {
+                setter.extend(ch.to_uppercase());
+                uppercase = false;
+            } else {
+                setter.push(ch);
+            }
+        }
+        return Some((value, setter));
+    }
+    if value.kind() == "array" {
+        let mut cursor = value.walk();
+        let entries: Vec<_> = value
+            .named_children(&mut cursor)
+            .filter(|child| child.kind() != "comment")
+            .collect();
+        if entries.len() == 2 && entries.iter().all(|entry| entry.kind() != "spread_element") {
+            let mut cursor = value.walk();
+            let commas: Vec<_> = value
+                .children(&mut cursor)
+                .filter(|child| child.kind() == ",")
+                .collect();
+            if !(1..=2).contains(&commas.len())
+                || commas[0].start_byte() < entries[0].end_byte()
+                || commas[0].end_byte() > entries[1].start_byte()
+                || commas
+                    .get(1)
+                    .is_some_and(|comma| comma.start_byte() < entries[1].end_byte())
+            {
+                return None;
+            }
+            return Some((
+                source[entries[0].start_byte()..entries[0].end_byte()].to_string(),
+                source[entries[1].start_byte()..entries[1].end_byte()].to_string(),
+            ));
+        }
+    }
+    None
+}
+
+fn render_model(
+    node: Node<'_>,
+    attribute: Node<'_>,
+    attrs: &[Node<'_>],
+    source: &str,
+    config: &Config,
+    warnings: &mut Vec<Warning>,
+) -> Option<String> {
+    let invalid = |warnings: &mut Vec<Warning>, message: &str| {
+        warnings.push(Warning {
+            message: message.into(),
+            start: attribute.start_byte() as u32,
+            end: attribute.end_byte() as u32,
+        });
+        None
+    };
+    let Some((value, setter)) = model_binding(attribute, source) else {
+        return invalid(
+            warnings,
+            "v-model requires an identifier or [value, setter] expression",
+        );
+    };
+    let tag = node.child_by_field_name("name")?;
+    let tag = &source[tag.start_byte()..tag.end_byte()];
+    let custom = tag.chars().next().is_some_and(char::is_uppercase) || tag.contains('.');
+    let find = |name: &str| {
+        attrs
+            .iter()
+            .find(|attr| {
+                let attr_name = attribute_name(**attr, source);
+                attr_name == Some(name)
+                    || attr_name == Some(&format!("{}bind:{name}", config.prefix))
+                    || attr_name == Some(&format!(":{name}"))
+            })
+            .copied()
+    };
+    let read_value = |attr| {
+        if attribute_name(attr, source).is_some_and(|name| {
+            name.starts_with(':') || name.starts_with(&format!("{}bind:", config.prefix))
+        }) {
+            directive_expression(attr, source)
+        } else {
+            attribute_value(attr, source)
+        }
+    };
+    let argument = attribute_name(attribute, source)
+        .and_then(|name| name.split_once(':').map(|(_, argument)| argument));
+    if custom {
+        let property = argument.unwrap_or("modelValue");
+        if !is_identifier(property) {
+            return invalid(warnings, "v-model requires a valid property name");
+        }
+        let mut chars = property.chars();
+        let event = format!("onUpdate{}{}", chars.next()?.to_uppercase(), chars.as_str());
+        if find(property).is_some() || find(&event).is_some() {
+            return invalid(
+                warnings,
+                "v-model conflicts with an existing model property or update handler",
+            );
+        }
+        let callback_value = fresh_parameter(source, "value");
+        return Some(format!(
+            "{property}={{{value}}} {event}={{{callback_value} => ({setter})({callback_value})}}"
+        ));
+    }
+    if argument.is_some() {
+        return invalid(
+            warnings,
+            "Named v-model is only supported on custom components",
+        );
+    }
+    let input_type = find("type").and_then(read_value);
+    if tag == "input"
+        && input_type
+            .as_ref()
+            .is_some_and(|value| !value.starts_with(['\'', '"']))
+    {
+        return invalid(warnings, "v-model requires a static input type");
+    }
+    let input_type = input_type
+        .as_deref()
+        .unwrap_or("\"text\"")
+        .trim_matches(['\'', '"']);
+    let (property, binding, update) = match tag {
+        "input" if input_type == "checkbox" => {
+            if let Some(option) = find("value").and_then(read_value) {
+                let binding = format!("({value}).includes({option})");
+                let update = format!(
+                    "__MODEL_EVENT__.currentTarget.checked ? [...({value}), ({option})] : ({value}).filter(__item => __item !== ({option}))"
+                );
+                ("checked", binding, Some(update))
+            } else {
+                (
+                    "checked",
+                    value.clone(),
+                    Some("__MODEL_EVENT__.currentTarget.checked".to_string()),
+                )
+            }
+        }
+        "input" if input_type == "radio" => {
+            let Some(option) = find("value").and_then(read_value) else {
+                return invalid(
+                    warnings,
+                    "v-model on radio inputs requires a value attribute",
+                );
+            };
+            ("checked", format!("({value}) === ({option})"), Some(option))
+        }
+        "input" | "textarea" => (
+            "value",
+            value.clone(),
+            Some("__MODEL_EVENT__.currentTarget.value".to_string()),
+        ),
+        "select" => {
+            let multiple = find("multiple");
+            let mode = multiple.and_then(read_value);
+            let update = match (multiple.is_some(), mode.as_deref()) {
+                (false, _) | (_, Some("false")) => "__MODEL_EVENT__.currentTarget.value",
+                (true, None | Some("true")) => {
+                    "Array.from(__MODEL_EVENT__.currentTarget.selectedOptions, option => option.value)"
+                }
+                _ => {
+                    "__MODEL_EVENT__.currentTarget.multiple ? Array.from(__MODEL_EVENT__.currentTarget.selectedOptions, option => option.value) : __MODEL_EVENT__.currentTarget.value"
+                }
+            };
+            ("value", value.clone(), Some(update.to_string()))
+        }
+        _ => {
+            return invalid(
+                warnings,
+                "v-model supports input, textarea, select and custom components",
+            );
+        }
+    };
+    if find(property).is_some() || find("onChange").is_some() {
+        return invalid(
+            warnings,
+            "v-model conflicts with an existing value, checked or onChange attribute",
+        );
+    }
+    let event_parameter = fresh_parameter(source, "event");
+    let update = update?.replace("__MODEL_EVENT__", &event_parameter);
+    let handler = format!("{event_parameter} => ({setter})({update})");
+    Some(format!("{property}={{{binding}}} onChange={{{handler}}}"))
+}
+
 fn is_comment(node: Node<'_>, source: &str) -> bool {
     if node.kind() == "comment" {
         return true;
@@ -523,6 +1049,19 @@ fn render_opening_element(
         if strip_own_condition && matches!(suffix, "if" | "else-if" | "else") {
             directives.push(*attribute);
         }
+        if suffix == "for" {
+            if loop_binding(*attribute, source).is_some() {
+                directives.push(*attribute);
+            } else {
+                warnings.push(Warning {
+                    message: format!(
+                        "{name} must use JSX expression syntax, for example {name}={{item in items}}"
+                    ),
+                    start: attribute.start_byte() as u32,
+                    end: attribute.end_byte() as u32,
+                });
+            }
+        }
         if suffix == "show" {
             if let Some(expression) = attribute_expression(*attribute, source) {
                 show_expression = Some(expression);
@@ -540,6 +1079,84 @@ fn render_opening_element(
     }
 
     let mut edits = Vec::new();
+    let has_html = attrs
+        .iter()
+        .any(|attr| attribute_name(*attr, source) == Some(&format!("{}html", config.prefix)));
+    let has_text = attrs
+        .iter()
+        .any(|attr| attribute_name(*attr, source) == Some(&format!("{}text", config.prefix)));
+    if has_html && has_text {
+        warnings.push(Warning {
+            message: "v-html and v-text cannot be used together".into(),
+            start: node.start_byte() as u32,
+            end: node.end_byte() as u32,
+        });
+    }
+    for attribute in &attrs {
+        let Some(name) = attribute_name(*attribute, source) else {
+            continue;
+        };
+        let suffix = name.strip_prefix(&config.prefix).unwrap_or_default();
+        let replacement = if let Some(argument) = suffix
+            .strip_prefix("bind:")
+            .or_else(|| name.strip_prefix(':'))
+        {
+            if argument.is_empty() {
+                None
+            } else {
+                let expression = directive_expression(*attribute, source);
+                if expression.is_none() {
+                    warnings.push(Warning {
+                        message: format!(
+                            "{name} must use JSX expression syntax, for example {name}={{value}}"
+                        ),
+                        start: attribute.start_byte() as u32,
+                        end: attribute.end_byte() as u32,
+                    });
+                }
+                expression.map(|expression| format!("{argument}={{{expression}}}"))
+            }
+        } else if suffix == "model" || suffix.starts_with("model:") {
+            render_model(node, *attribute, &attrs, source, config, warnings)
+        } else if suffix == "bind" {
+            let expression = directive_expression(*attribute, source);
+            if expression.is_none() {
+                warnings.push(Warning {
+                    message: format!(
+                        "{name} must use JSX expression syntax, for example {name}={{attrs}}"
+                    ),
+                    start: attribute.start_byte() as u32,
+                    end: attribute.end_byte() as u32,
+                });
+            }
+            expression.map(|expression| format!("{{...({expression})}}"))
+        } else if !has_html || !has_text {
+            if suffix == "html" {
+                attribute_expression(*attribute, source).map(|expression| {
+                    format!("dangerouslySetInnerHTML={{{{ __html: {expression} }}}}")
+                })
+            } else if suffix == "text" {
+                attribute_expression(*attribute, source).map(|expression| {
+                    if node.kind() == "jsx_self_closing_element" {
+                        format!("children={{{expression}}}")
+                    } else {
+                        String::new()
+                    }
+                })
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        if let Some(replacement) = replacement {
+            edits.push(Edit {
+                start: attribute.start_byte(),
+                end: attribute.end_byte(),
+                replacement,
+            });
+        }
+    }
     for attribute in directives {
         let mut start = attribute.start_byte();
         while start > node.start_byte() && source.as_bytes()[start - 1].is_ascii_whitespace() {
@@ -643,7 +1260,7 @@ mod tests {
             "fixture.tsx".into(),
             Some(TransformOptions::default()),
         )
-        .expect("fixture should transform")
+        .unwrap_or_else(|error| panic!("fixture should transform: {error}; source={source}"))
     }
 
     fn assert_tsx_parses(source: &str) {
@@ -653,6 +1270,205 @@ mod tests {
             .expect("TSX parser should initialize");
         let tree = parser.parse(source, None).expect("TSX should parse");
         assert!(!tree.root_node().has_error(), "{source}");
+    }
+
+    #[test]
+    fn 列表支持根节点嵌套与条件优先级() {
+        for source in [
+            "const view = <li v-for={item in items}>{item}</li>",
+            "<ul><li v-for={(item, index) in items} key={index}>{item}</li></ul>",
+            "<><Item v-if={ready} v-for={item in items} item={item} /><Empty v-else /></>",
+            "<ul><li v-for={item in items}><b v-for={child in item.children}>{child}</b></li></ul>",
+        ] {
+            let result = transform_source(source);
+            assert!(result.warnings.is_empty(), "{source}");
+            assert!(!result.code.contains("v-for"), "{}", result.code);
+            assert!(result.code.contains(".map((item"), "{}", result.code);
+            assert_tsx_parses(&result.code);
+        }
+        let result = transform_source("<Item v-if={ready} v-for={item in items} />");
+        assert!(result.code.find("(ready) ?").unwrap() < result.code.find(".map").unwrap());
+        for source in [
+            "<Item v-for=\"item in items\" />",
+            "<div v-bind:title=\"title\" />",
+        ] {
+            let result = transform_source(source);
+            assert_eq!(result.code, source);
+            assert_eq!(result.warnings.len(), 1);
+        }
+    }
+
+    #[test]
+    fn 模型转换原生控件与自定义组件() {
+        for (source, expected) in [
+            (
+                "<input v-model={firstName} />",
+                "value={firstName} onChange={event => (setFirstName)(event.currentTarget.value)}",
+            ),
+            (
+                "<textarea v-model={[text, update]} />",
+                "value={text} onChange={event => (update)(event.currentTarget.value)}",
+            ),
+            (
+                "<input type=\"checkbox\" v-model={checked} />",
+                "checked={checked} onChange={event => (setChecked)(event.currentTarget.checked)}",
+            ),
+            (
+                "<input type=\"checkbox\" value={option} v-model={choices} />",
+                "checked={(choices).includes(option)} onChange={event => (setChoices)(event.currentTarget.checked ? [...(choices), (option)] : (choices).filter(__item => __item !== (option)))}",
+            ),
+            (
+                "<input type=\"radio\" value={option} v-model={choice} />",
+                "checked={(choice) === (option)} onChange={event => (setChoice)(option)}",
+            ),
+            (
+                "<select v-model={choice} />",
+                "value={choice} onChange={event => (setChoice)(event.currentTarget.value)}",
+            ),
+            (
+                "<select multiple v-model={[choices, update]} />",
+                "Array.from(event.currentTarget.selectedOptions, option => option.value)",
+            ),
+            (
+                "<Field v-model={name} />",
+                "modelValue={name} onUpdateModelValue={value => (setName)(value)}",
+            ),
+            (
+                "<Field v-model:first={[name, update]} />",
+                "first={name} onUpdateFirst={value => (update)(value)}",
+            ),
+            (
+                "<input v-model={keyword} />",
+                "value={keyword} onChange={event => (setKeyword)(event.currentTarget.value)}",
+            ),
+            (
+                "<Field v-model={email} />",
+                "modelValue={email} onUpdateModelValue={value => (setEmail)(value)}",
+            ),
+            (
+                "<Field v-model:first={[first, update]} />",
+                "first={first} onUpdateFirst={value => (update)(value)}",
+            ),
+            (
+                "<input type=\"checkbox\" :value={option} v-model={choices} />",
+                "checked={(choices).includes(option)}",
+            ),
+            (
+                "<select multiple={many} v-model={choice} />",
+                "event.currentTarget.multiple ? Array.from(event.currentTarget.selectedOptions, option => option.value) : event.currentTarget.value",
+            ),
+            (
+                "<input v-model={[text, event]} />",
+                "event1 => (event)(event1.currentTarget.value)",
+            ),
+            (
+                "<Field v-model={[name, value]} />",
+                "value1 => (value)(value1)",
+            ),
+        ] {
+            let result = transform_source(source);
+            assert!(result.warnings.is_empty(), "{source}");
+            assert!(result.code.contains(expected), "{}", result.code);
+            assert!(!result.code.contains("v-model"));
+            assert_tsx_parses(&result.code);
+        }
+    }
+
+    #[test]
+    fn 模型无效表达式和显式属性冲突保留原文并警告() {
+        for source in [
+            "<input v-model={state.name} />",
+            "<input value={name} v-model={name} />",
+            "<Field onUpdateModelValue={update} v-model={name} />",
+            "<input type={kind} v-model={name} />",
+            "<input v-model={[, name, setter]} />",
+            "<input v-model={[name,, setter]} />",
+            "<input v-model=\"name\" />",
+        ] {
+            let result = transform_source(source);
+            assert_eq!(result.code, source);
+            assert_eq!(result.warnings.len(), 1);
+        }
+    }
+
+    #[test]
+    fn 简写仅转换开标签属性并保持原始偏移() {
+        for (source, expected) in [
+            ("<div :title={title} />", "<div title={title} />"),
+            (
+                "const text = '<div :title={title}/>'; const view = <div :title={title} />",
+                "const text = '<div :title={title}/>'; const view = <div title={title} />",
+            ),
+            (
+                "/* <div :title={title}/> */ const view = <div :title={title} />",
+                "/* <div :title={title}/> */ const view = <div title={title} />",
+            ),
+            (
+                "<div title=\":literal\"> :text 'quote {ok && <span :title={title}/>}</div>",
+                "<div title=\":literal\"> :text 'quote {ok && <span title={title}/>}</div>",
+            ),
+            (
+                "const pattern = /<div :title/; const view = <div :title={title} />",
+                "const pattern = /<div :title/; const view = <div title={title} />",
+            ),
+            (
+                "const x = `<div :title/> ${<span :title={title}/>}`",
+                "const x = `<div :title/> ${<span title={title}/>}`",
+            ),
+            (
+                "const f = <T,>(x: T) => <div :title={title} />",
+                "const f = <T,>(x: T) => <div title={title} />",
+            ),
+        ] {
+            let result = transform_source(source);
+            assert_eq!(result.code, expected);
+            assert_tsx_parses(&result.code);
+        }
+        let source = "const small = a<b ? c : d; const view = <div v-if={ready} />";
+        let result = transform_source(source);
+        assert!(result.code.contains("a<b ? c : d"), "{}", result.code);
+        assert_tsx_parses(&result.code);
+    }
+
+    #[test]
+    fn 内容指令替换原有子节点并处理冲突() {
+        let html = transform_source("<div v-html={markup}><span>old</span></div>");
+        assert_eq!(
+            html.code,
+            "<div dangerouslySetInnerHTML={{ __html: markup }}></div>"
+        );
+        let text = transform_source("<div v-text={message}>old</div>");
+        assert_eq!(text.code, "<div >{message}</div>");
+        let source = "<div v-html={markup} v-text={message}>old</div>";
+        let conflict = transform_source(source);
+        assert_eq!(conflict.code, source);
+        assert_eq!(conflict.warnings.len(), 1);
+        assert_tsx_parses(&html.code);
+        assert_tsx_parses(&text.code);
+    }
+
+    #[test]
+    fn 绑定属性和对象() {
+        let result = transform_source("<div v-bind:title={title} v-bind={props} />");
+        assert_eq!(result.code, "<div title={title} {...(props)} />");
+        assert_tsx_parses(&result.code);
+        for source in [
+            "<div v-bind:title={title} :id={elementId} v-bind={props} className=\"literal\" />",
+            "<div v-bind:title=\"title\" />",
+        ] {
+            let result = transform_source(source);
+            if source == "<div v-bind:title=\"title\" />" {
+                assert_eq!(result.code, source);
+                assert_eq!(result.warnings.len(), 1);
+            } else {
+                assert_eq!(
+                    result.code,
+                    "<div title={title} id={elementId} {...(props)} className=\"literal\" />"
+                );
+                assert!(result.warnings.is_empty());
+            }
+            assert_tsx_parses(&result.code);
+        }
     }
 
     #[test]

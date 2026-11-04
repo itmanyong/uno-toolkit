@@ -1,3 +1,7 @@
+---
+description: Uno Toolkit 三个独立示例项目的运行方式、交互验证步骤和构建产物检查方法。
+---
+
 # 可运行示例
 
 三个插件各有一个独立的示例项目，位于仓库 `examples/` 目录。示例中的代码与对应插件文档的「完整使用示例」一致，可以直接启动、交互，并在构建产物中确认转换结果。
@@ -35,7 +39,11 @@ pnpm preview      # 预览构建产物
 | --- | --- |
 | 点击 `ready` / `loading` / `idle` | `v-if` / `v-else-if` / `v-else` 条件链只渲染一个分支 |
 | 点击「切换 v-show」 | 元素保留在 DOM 中，内联 `display` 在 `none` 与缺省之间变化 |
-| 观察第二个演示区 | 已有 `style` 表达式的元素保留 `color`，并叠加 `v-show` 写入的 `display` |
+| 观察显示控制区 | 已有 `style` 表达式的元素保留 `color`，并叠加 `v-show` 写入的 `display` |
+| 在文本框或 textarea 输入 | `v-text` 更新内容，隐式与显式 setter 的 `v-model` 同步更新 |
+| 观察内容与列表区 | `v-html` 注入 HTML，`v-for` 渲染列表并可与 `v-if` 同用 |
+| 观察属性绑定区 | `v-bind` 展开对象，具名绑定设置图片属性 |
+| 操作 checkbox、radio、select 和组件输入框 | 原生控件模型、默认组件模型及具名组件模型分别更新 |
 
 条件链的三个分支在源码中不必写在同一行，分支之间允许换行与缩进（兼容 Prettier 等代码格式化工具），仅非空白文本、逗号或其他 JSX 节点会中断链条。`tsconfig.json` 通过 `types` 引入包提供的 JSX 指令属性声明。
 

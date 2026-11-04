@@ -1,18 +1,18 @@
 body {
   margin: 0;
-  color: #fff;
+  color: #eff5f1;
   font-family: Inter, Helvetica, Arial, sans-serif;
-  background-image: linear-gradient(to bottom, #020917, #101725);
+  background: #171c1a;
 }
 
 .content {
-  max-width: 760px;
+  max-width: 860px;
   margin: 0 auto;
-  padding: 48px 24px;
+  padding: 32px 20px;
 }
 
 h1 {
-  font-size: 2.4rem;
+  font-size: 2rem;
 }
 
 .toolbar {
@@ -23,13 +23,53 @@ h1 {
 }
 
 .toolbar button {
-  padding: 6px 14px;
+  padding: 8px 14px;
+  border: 1px solid #9cb9aa;
+  border-radius: 4px;
+  background: #d9f3e3;
+  color: #183527;
   cursor: pointer;
 }
 
 .panel {
   padding: 16px 20px;
   margin-bottom: 16px;
-  border: 1px solid #2b3a52;
+  border: 1px solid #43534a;
   border-radius: 8px;
+  background: #222925;
+}
+
+.panel h2 {
+  font-size: 1.2rem;
+}
+
+.panel label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.panel input:not([type="checkbox"]):not([type="radio"]),
+.panel textarea,
+.panel select {
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #a8b9af;
+  border-radius: 4px;
+  background: #f8faf9;
+  color: #17231c;
+  font: inherit;
+}
+
+.panel textarea {
+  min-width: 220px;
+  min-height: 64px;
+  resize: vertical;
+}
+
+.panel img {
+  margin: 4px 12px 4px 0;
 }

@@ -1,6 +1,6 @@
 # @uno-pc/jsx-directive
 
-使用 Rust 与 tree-sitter 在构建期转换 React JSX/TSX 指令。提供 `v-if`、`v-else-if`、`v-else` 条件分支和 `v-show` 显示控制，并提供 Vite、Rsbuild 插件。
+使用 Rust 与 tree-sitter 在构建期转换 React JSX/TSX 指令，包括 `v-if` / `v-else-if` / `v-else`、`v-show`、`v-html`、`v-text`、`v-for`、`v-bind` 和 `v-model`，并提供 Vite、Rsbuild 插件。
 
 - 📖 在线文档：<https://itmanyong.github.io/uno-toolkit/plugins/jsx-directive>
 
@@ -94,9 +94,43 @@ JsxDirectiveVite({
 
 `v-show` 保留元素，并根据条件设置 `show.property`。没有 `style` 时会创建样式对象；已有的表达式样式会先展开，再应用 `v-show` 对应的属性和值。若已有 `style` 不是表达式形式，会产生警告且不更新该样式值。
 
+### 内容、列表与属性绑定
+
+```tsx
+<div v-html={html} />
+<div v-text={message}>旧内容会被替换</div>
+<ul>
+  <li v-for={item in items} key={item}>{item}</li>
+</ul>
+<div v-bind={attrs} />
+<img v-bind:src={url} v-bind:alt={alt} />
+```
+
+`v-html` 接收 JSX 表达式并生成 `dangerouslySetInnerHTML`；`v-text` 替换元素的全部子内容。两者不能用于同一元素，冲突时保留源码并报告警告。
+
+`v-for` 使用 JSX 表达式形式 `v-for={item in items}` 或 `v-for={(item, index) in items}`，转换为 `items.map(...)`；与 `v-if` 同用时先编译条件，再展开循环。
+
+`v-bind={attrs}` 会展开对象；`v-bind:name={expression}` 与 `:name={expression}` 使用 JSX 表达式作为绑定值。
+
+### 双向绑定
+
+```tsx
+<input v-model={keyword} />
+<input type="checkbox" value="Jack" v-model={checkedNames} />
+<select multiple v-model={selectedList} />
+<MyInput v-model={email} />
+<UserName v-model:first={firstName} />
+<textarea v-model={[keyword, setKeyword]} />
+<UserName v-model:first={[firstName, setFirstName]} />
+```
+
+`v-model` 参考 Vue 3 的绑定约定（暂不支持修饰符）。原生 `input`、`textarea`、`select` 生成受控值及 `onChange`；checkbox/radio 根据类型生成 checked 状态，多选列表使用数组增删；自定义组件使用 `modelValue`/`onUpdateModelValue`，命名模型使用对应属性和 `onUpdate<Name>` 事件。
+
+普通变量模型（例如 `v-model={keyword}`）默认推断 setter 为 `setKeyword`；也可写成 `[value, setter]` 显式指定。
+
 ## TypeScript JSX 类型
 
-包提供 React JSX 指令属性声明。应用的 `tsconfig.json` 可将包名加入 `compilerOptions.types`，同时保留已有类型包：
+包提供 React JSX 指令属性声明，允许 `v-if`、`v-for`、`v-model`、`v-bind:name`、`v-model:name` 等指令值使用 JSX 表达式。应用的 `tsconfig.json` 可将包名加入 `compilerOptions.types`，同时保留已有类型包：
 
 ```json
 {
@@ -105,6 +139,27 @@ JsxDirectiveVite({
   }
 }
 ```
+
+各属性由 `JsxDirectiveAttributes` 定义，`v-html` 的值类型沿用 React `dangerouslySetInnerHTML.__html`，`v-text` 沿用 `ReactNode`：
+
+| 指令 | TypeScript 属性类型 | TSX 示例 |
+| --- | --- | --- |
+| `v-if` | `unknown` | `<p v-if={ready}>就绪</p>` |
+| `v-else-if` | `unknown` | `<p v-else-if={loading}>加载中</p>` |
+| `v-else` | `true` | `<p v-else>暂不可用</p>` |
+| `v-show` | `unknown` | `<div v-show={visible}>内容</div>` |
+| `v-html` | `NonNullable<DOMAttributes<HTMLElement>["dangerouslySetInnerHTML"]>["__html"]` | `<div v-html={html} />` |
+| `v-text` | `ReactNode` | `<p v-text={message} />` |
+| `v-for` | `boolean`（`item in items` 的静态结果） | `<li v-for={item in items}>{item}</li>` |
+| `v-bind` | `object` | `<div v-bind={attrs} />` |
+| `v-bind:名称` | `unknown` | `<img v-bind:src={url} />` |
+| `:名称` | `unknown` | `<img :src={url} />`（仅转换器支持） |
+| `v-model` | `unknown` | `<input v-model={keyword} />` |
+| `v-model:名称` | `unknown` | `<UserName v-model:first={[firstName, setFirstName]} />` |
+
+`unknown` 表示指令值不限制为布尔值或字符串；转换器仍要求动态值使用 `{...}`，`v-model` 只接受变量名或 `[value, setter]`。`v-else` 不接收条件，写成无值属性。
+
+TypeScript 不会推导编译期作用域：`v-for` 的循环变量需在源码中提供占位声明，自定义组件的模型 props 需允许由编译器注入。双变量 `v-for={(item, index) in items}` 虽可转换，但 TypeScript 会报告 TS2695；`:name` 简写也无法通过 TSX 解析，源码中请用 `v-bind:name={value}`。`v-html` 会插入 HTML，仅传入可信内容。
 
 ## 开发
 
