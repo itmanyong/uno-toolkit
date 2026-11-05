@@ -36,3 +36,19 @@ export const reportWarnings = (
     });
   }
 };
+
+/** R-A：残留 v-memo 属于正确性错误，必须在编译期阻断而非降级为告警。 */
+export const throwOnErrors = (
+  errors: TransformWarning[] | undefined,
+  id: string,
+  source: string,
+): void => {
+  if (!errors?.length) return;
+  const messages: string[] = [];
+  reportWarnings(errors, id, source, (diagnostic) => {
+    messages.push(
+      `${diagnostic.id}:${diagnostic.loc.line}:${diagnostic.loc.column + 1}: ${diagnostic.message}`,
+    );
+  });
+  throw new Error(messages.join("\n"));
+};

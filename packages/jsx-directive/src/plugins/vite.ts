@@ -1,7 +1,7 @@
 import type { Plugin } from "vite";
 import { getFormats, transformDirectives } from "../core";
 import type { DirectiveTransformConfig } from "../core/types";
-import { reportWarnings } from "../shared/warnings";
+import { reportWarnings, throwOnErrors } from "../shared/warnings";
 
 export const JsxDirectiveVite = (
   config: DirectiveTransformConfig = {},
@@ -17,6 +17,7 @@ export const JsxDirectiveVite = (
       if (!testFormats || !new RegExp(`\\.(${testFormats})$`, "i").test(id))
         return null;
       const result = transformDirectives(code, id, config);
+      throwOnErrors(result.errors, id, code);
       reportWarnings(result.warnings, id, code, (warning) => {
         this.warn(
           `${warning.id}:${warning.loc.line}:${warning.loc.column + 1}: ${warning.message}`,

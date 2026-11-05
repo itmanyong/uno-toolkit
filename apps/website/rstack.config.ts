@@ -6,7 +6,8 @@ define.doc({
   // 本地开发保持 "/"，CI 构建时通过 DOC_BASE 注入。
   base: process.env.DOC_BASE ?? "/",
   title: "Uno Toolkit 文档",
-  description: "三个构建期转换插件的使用文档：功能说明、安装配置与完整示例。",
+  description:
+    "三个构建期转换插件与 reactivue 运行时组合包的使用文档：功能说明、安装配置与完整示例。",
   lang: "zh",
   logoText: "uno-toolkit",
   themeConfig: {
@@ -18,6 +19,7 @@ define.doc({
           { text: "JSX 指令", link: "/plugins/jsx-directive" },
           { text: "样式分层", link: "/plugins/style-layer" },
           { text: "Signals 转换", link: "/plugins/signals-transform" },
+          { text: "Reactivue", link: "/plugins/reactivue" },
         ],
       },
       { text: "可运行示例", link: "/guide/examples" },
@@ -40,12 +42,13 @@ define.doc({
               text: "@uno-pc/signals-transform",
               link: "/plugins/signals-transform",
             },
+            { text: "@uno-pc/reactivue", link: "/plugins/reactivue" },
           ],
         },
       ],
     },
     footer: {
-      message: "Uno Toolkit · 构建期转换插件",
+      message: "Uno Toolkit · 构建期转换插件与 Reactivue",
     },
   },
 });

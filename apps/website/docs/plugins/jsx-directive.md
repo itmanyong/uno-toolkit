@@ -20,7 +20,7 @@ React JSX / TSX 指令的编译期转换插件，支持条件、循环、内容�
 | `v-model`                       | 支持原生表单控件和 Vue 3 风格自定义组件模型（暂不支持修饰符）。                                     |
 | 构建工具入口                    | 导出 `JsxDirectiveVite` 与 `JsxDirectiveRsbuild`。                                                 |
 | 核心 API                        | 包根入口还导出 `transformDirectives`、`getFormats`、`reportWarnings` 及配置类型，便于自行集成。       |
-| 转换时机                        | Vite 插件 `enforce: "pre"`，Rsbuild 插件 `order: "pre"`，均在其它代码转换之前执行。                  |
+| 转换时机                        | Vite 插件 `enforce: "pre"`；Rsbuild 插件固定 default 档（不设 `order`），保证 `@uno-pc/reactivue`（`pre` 档，消费 `v-memo`）恒先执行 —— Rsbuild 的多个 `pre` transform 按注册逆序执行，顺序不能靠注册先后保证。 |
 | 默认处理范围                    | `.jsx`、`.tsx`，匹配不区分大小写。                                                                 |
 | 诊断                            | 无效指令、冲突或孤立分支会通过构建工具 logger 输出警告。                                           |
 

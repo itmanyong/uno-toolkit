@@ -1,7 +1,7 @@
 import type { RsbuildPlugin } from "@rsbuild/core";
 import { getFormats, transformDirectives } from "../core";
 import type { DirectiveTransformConfig } from "../core/types";
-import { reportWarnings } from "../shared/warnings";
+import { reportWarnings, throwOnErrors } from "../shared/warnings";
 
 export const JsxDirectiveRsbuild = (
   config: DirectiveTransformConfig = {},
@@ -14,10 +14,12 @@ export const JsxDirectiveRsbuild = (
     api.transform(
       {
         test: formats ? new RegExp(`\\.(${formats})$`, "i") : /$a/,
-        order: "pre",
+        // 不用 "pre"：Rsbuild 的多个 pre transform 按注册逆序执行，
+        // 而 reactivue 是 pre —— default 保证 reactivue（消费 v-memo）永远先跑。
       },
       ({ code, resourcePath }) => {
         const result = transformDirectives(code, resourcePath, config);
+        throwOnErrors(result.errors, resourcePath, code);
         reportWarnings(result.warnings, resourcePath, code, (warning) => {
           api.logger.warn(
             `${warning.id}:${warning.loc.line}:${warning.loc.column + 1}: ${warning.message}`,
