@@ -47,12 +47,24 @@ define.test({
       include: ["./tests/**/*.test.{ts,tsx}"],
       exclude: ["**/ssr.node.test.tsx"],
       testEnvironment: "jsdom",
+      resolve: {
+        alias: {
+          vue: path.resolve("./src/compat/index.ts"),
+          "@vue/runtime-dom": path.resolve("./src/compat/index.ts"),
+        },
+      },
       ...automaticJsx,
     }),
     defineInlineProject({
       name: "node-ssr",
       include: ["./tests/ssr.node.test.tsx"],
       testEnvironment: "node",
+      resolve: {
+        alias: {
+          vue: path.resolve("./src/compat/index.ts"),
+          "@vue/runtime-dom": path.resolve("./src/compat/index.ts"),
+        },
+      },
       ...automaticJsx,
     }),
   ],

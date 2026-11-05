@@ -562,7 +562,7 @@ const Counter = _Host({
 ### 6.12 SourceMap 与 HMR
 
 - 首版转换**不生成 source map**（与现有三包一致，`transform` 返回 `{ code, map: null }`），在 README 中标注为已知限制。**评审决议第 6 条已接受，并列入后续规划，不进 P0–P4 验收。**
-- HMR：setup 内状态在热更新时的保留策略首版不做（沿用 React Fast Refresh 的默认行为，即组件重挂载）；列为 P4 之后的增强项。
+- HMR：setup 内状态在热更新时的保留策略首版不做（沿用 React Fast Refresh 的默认行为）；列为 P4 之后的增强项。实测语义与预期不同——既非重挂载也非模板热应用，而是「状态保留 + 编辑不可达」，见 §18.15。
 
 ---
 
@@ -1507,6 +1507,36 @@ VueUse 15 兼容注记：`useNow` 已移除 `interval` 选项（改 `Configurabl
 §18.14 已收口：判定口径取数、S6 hydration、S11 观测口径、fingerprint 定案（不做）、冗余聚合定案（暂缓）、pinia 评估（可用）、真 server SSR 测试、automatic JSX runtime、根 README 条目。**仍开放**：
 
 - `c_b / t_r / D_max / N_min` 的**正式验收**：初步拟合已给出（§18.14），但正式验收需按 §14.6 扩大采样（m>128、多浏览器、多次运行统计显著性）。
-- **HMR 状态保留**：未验证（Fast Refresh 默认行为）。
-- **pinia 接入实现**：可行性已定（补 `isShallow` 导出 + 别名注入 + example 验证，0.5–1 人日），作为独立 feature 排期。
+- **HMR 状态保留**：已验证，见 `bench/hmr-verification-2026-11-05.md`，结论：响应式状态跨 Fast Refresh 完整保留且 UI 存活（不 remount、无报错），但 reactivue 组件的模板/结构/setup 编辑因 render 绑定首次挂载时的 setup 闭包而在热更后不可达，需整页 reload 才生效；纯 React 对照组件行为正常（详见 §18.15）。
+- ~~**pinia 接入实现**~~：**已完成（2026-11-05，§18.15）**——compat 补 `isShallow`，setup/options 式 `defineStore` 经 vue alias 实测可用，`tests/pinia.test.tsx` 8 用例（73/73 全绿）。
 - **编译产物对比口径**：S12 判定数据已含编译产物（browser-fixture 用 ReactivueRsbuild 构建）；如需更细的产物体积/结构对比再议。
+
+### 18.15 HMR 状态保留实测（2026-11-05，第八轮）
+
+§18.11 最后一项开放待办的实测落地。方法与逐场景数据见 `bench/hmr-verification-2026-11-05.md`，此处记结论与定性。
+
+**环境**：Rsbuild v2.3.0（`examples/reactivue-all` dev server，`rstack.config.ts` 含 `@rsbuild/plugin-react()`，内部为 `@rspack/plugin-react-refresh` 运行时）；热更链路全程 CDP 抓包核验——WebSocket 推 hash → 客户端拉 `*.hot-update.json/.js`（200）→ JSONP 执行 `rspackHotUpdate`，产物含新编译模块（排除陈旧缓存）。
+
+**核心发现**：沿用 Fast Refresh 默认行为时，reactivue 组件呈「状态保留 + 编辑不可达」混合态——
+
+1. **状态保留（达成，强于预期）**：`useRef` 中的宿主实例跨热更完整存活，ref/computed/watch/VueUse interval 全部不中断；且 Fast Refresh 判定签名未变**不发生 remount**——§6.12 原表述「即组件重挂载」与实测不符，已修正。
+2. **编辑不可达（未达成，弱于纯 React 基线）**：Fast Refresh 确实对已挂载 fiber 发起重渲染（宿主渲染计数 2→16 为证），但重渲染走 `host.render()` 产出的是首次挂载时 setup 闭包里的旧模板（`Host.tsx` 的 `useRef` 惰性初始化只跑一次），新模块的 setup 在已挂载实例上永远不执行。表现为：模板文案、JSX 结构、setup 逻辑三类编辑热更后一律无变化、无提示（无报错无 overlay），整页 reload 后才生效（reload 即全新挂载、状态归零）。
+3. **同文件纯 React 组件正常**：NaiveCounter 对照在每次编辑后均为「state 保留 + 新代码生效」，证明差异确系 reactivue 编译宿主特有。
+
+**定性**：dev 体验风险点是「改了没反应且无任何提示」，易误判为未保存。可能的增强方向（未排期）：热更时把新 setup 注入存活实例（替换 `host.render` 引用，可复用 §7.1 实例本地状态方案思路），或对 reactivue 组件族声明 `module.hot.invalidate` 触发可控 remount。本轮只验证记录，未改 src。
+
+### 18.16 pinia 接入实现（2026-11-05，同日第八轮）
+
+§18.14 ④ 可行性评估的落地收口。改动均为增量，无 compat 架构变更：
+
+1. `src/compat/index.ts`：`@vue/reactivity` re-export 列表补 `isShallow`（pinia 唯一缺口，一行）。
+2. 测试环境：`packages/reactivue` devDeps 加 `pinia@4.1.0` + `@vue/devtools-api`（pinia 必选 peer，v8 与 vue 解耦）；`rstack.config.ts` 两个 inline project（dom / node-ssr）补 `vue` / `@vue/runtime-dom` → `./src/compat/index.ts` 的 resolve.alias（与 domTestConfig 同型）。
+3. `tests/pinia.test.tsx` 8 用例：compat 导出 `isShallow`；ESM linking 完整性；setup 式 defineStore（state/getter/action，React 组件经 `useSetup` 桥消费并获得微任务级重渲染）；options 式 defineStore（isShallow 路径的 state 探测）；store 实例缓存（跨组件同实例且状态互通）；实例 identity；`$subscribe` 触发；无组件上下文 activePinia 回退。**73/73 全绿（65 原有 + 8 新增）**。
+
+实测发现（相对可行性文档的偏差）：
+
+- **pinia 4.x 移除了全局 `useStore` 导出**（v2/v3 遗留 API）：`dist/pinia.js` 的导出面为 `createPinia / defineStore / setActivePinia / storeToRefs` 等 18 个，`defineStore` 的返回值本身就是 useStore，直接调用即可。可行性文档 §3 引用的 `useStore()` 取 pinia 顺序逻辑仍成立，只是入口改为 store 定义函数。
+- pinia store 为模块级缓存，跨测试用例状态泄漏——测试需 `setActivePinia(createPinia())` 隔离。
+- `$subscribe` 依赖的 compat `watch`（@vue/reactivity 3.5 原生转发，支持 deep/flush）实测可用，无需 shim。
+
+用户侧口径（README「pinia 兼容」节）：`pnpm add pinia @vue/devtools-api` + 入口 `setActivePinia(createPinia())`；alias 由插件自动注入；不要调用 `pinia.install(app)`。

@@ -15,6 +15,7 @@
 | P4 Vite / Rsbuild 插件、`./compat`、`./internal`、类型声明 | 已实现；`examples/reactivue-all` 构建通过 + VueUse 实测通过 |
 | R-A 外壳（`jsx-directive` 残留 `v-memo` 编译期报错） | 已实现 + 两插件串联实测 |
 | VueUse 兼容（纯组合式函数经 `./compat` 桥） | 已实现 + DOM 回归测试（useToggle / useNow） |
+| pinia 兼容（setup 式 + options 式 `defineStore` 经 `./compat` 桥） | 已实现 + DOM 回归测试（8 用例，`tests/pinia.test.tsx`） |
 
 > 未注册插件时，`defineComponent` 走**降级路径**（整体一个 `Block`，组件级重渲染，功能正确但无细粒度收益）。注册插件后编译产物改由 `createCompiledHost` 接管，setup 仍只跑一次。
 
@@ -135,12 +136,41 @@ const Demo = defineComponent(() => {
 
 实测通过的用例见 `tests/vueuse.test.tsx`（useToggle 交互更新、useNow 初始渲染）；完整示例见 `examples/reactivue-all`。compat 目前导出的 Vue API 以 VueUse 常用面为准，缺失导出会让 ESM linking 直接报错（补齐方式见 `src/compat/index.ts` 内的 stub 注释）。
 
+## pinia 兼容（已验证可用）
+
+pinia 4.x 对 `vue` 的依赖是纯 reactivity + 实例上下文（21 个导入，compat 全覆盖），不依赖 Vue app 实例。setup 式与 options 式 `defineStore` 均实测可用，用例见 `tests/pinia.test.tsx`。
+
+用法：
+
+```bash
+pnpm add pinia @vue/devtools-api # @vue/devtools-api 是 pinia 的必选 peer
+```
+
+```tsx
+import { createPinia, defineStore, setActivePinia } from "pinia";
+
+// 应用入口执行一次（React 下不走 install(app)，手动注入即可）
+setActivePinia(createPinia());
+
+const useCounterStore = defineStore("counter", () => {
+  const count = ref(0);
+  return { count, inc: () => count.value++ };
+});
+```
+
+注意事项：
+
+- 构建工具中 `vue` / `@vue/runtime-dom` → `@uno-pc/reactivue/compat` 的 alias 由本包插件自动注入（与 VueUse 同机制）。
+- pinia 4.x **不导出全局 `useStore`**（v2/v3 遗留 API 已移除）：`defineStore` 的返回值本身就是 useStore，直接调用 `useCounterStore()`。
+- React 组件内消费 store 时，更新不会自动驱动 React 重渲染（pinia 不感知 React）；经 `useSetup` 桥即可获得组件级重渲染（deep traverse → 微任务 setTick），`tests/pinia.test.tsx` 即此模式。
+- 不要调用 `pinia.install(app)`：React 下没有 Vue app 实例，`app.config.globalProperties` 等路径无 mock 支撑。devtools / SSR 分支在不走 install 时安全降级。
+
 ## 语义差异（重要）
 
 - **`v-memo={[a, b]}` 是「额外触发源」，不是 Vue 原语义**：刷新条件 = 块内自动收集的响应式依赖变化 ∪ deps 逐项 `Object.is` 变化。deps 中的响应式依赖（纯 ref、reactive props 等）由运行时显式订阅（微任务事务中比较，变化才整块刷新），与 Vue 的「deps 不变就跳过更新」方向相反；`v-memo={[]}` 在本包**不等价** `v-once`。
 - **`onUpdated`** 由「本宿主内任一动态块完成更新」触发，不是 React 组件重渲染。
 - **`./compat` 的 `defineComponent`** 是 Vue 语义的 identity 函数，与主入口的 React 版同名不同义。
-- **`getCurrentInstance()`** 返回精简元信息而非 Vue 组件实例；`emit()`、`app.component/directive/mixin`、依赖真实 Vue 渲染器的库不可用。首版只以 VueUse 纯组合式函数为目标，pinia 列入规划。
+- **`getCurrentInstance()`** 返回精简元信息而非 Vue 组件实例；`emit()`、`app.component/directive/mixin`、依赖真实 Vue 渲染器的库不可用。首版只以 VueUse 纯组合式函数为目标（pinia 已另行验证，见下节）。
 - **JSX 里 ref 不自动解包**：`enabled.value ? "ON" : "OFF"` 才是正确写法（Vue JSX 同语义，只有 SFC 模板才有自动解包）；`{enabled}` 会把 Ref 对象当真值。同理 `{bool}` 在 React JSX 中渲染为空，需要 `String(bool)`。
 - **hooks 检测按导入源识别**：setup 内「从 `react` / `react-dom` 导入的 `use*`」才判定为 React hooks 并跳过切块；VueUse 的 `useNow` 等不会误触发降级。
 

@@ -1,5 +1,7 @@
 # @uno-pc/reactivue × pinia 可行性评估
 
+> **状态更新（2026-11-05）**：已实现接入——compat 补 `isShallow`、setup/options 式 defineStore 测试覆盖见 `packages/reactivue/tests/pinia.test.tsx`（8 用例），落地记录见 `REACTIVUE-DESIGN.md` §18.15。实测偏差：pinia 4.x 已移除全局 `useStore` 导出，`defineStore` 返回值即 useStore，直接调用（§3 的取 pinia 顺序逻辑不变，入口改为 store 定义函数）。
+
 > 调研日期：2026-11-05。调研对象：**pinia 4.1.0**（npm 当前 latest；设计文档原计划的 "pinia v3" 已被 v4 取代，v3+ 均为 vue-demi 移除后的纯 Vue 3 代码线，依赖面同源）。
 > 方法：对 `pinia/dist/pinia.js`（真实发布产物）做 import 面与调用点静态核查，并在 %TEMP% 环境下用本包 `dist/compat` 构建 `vue` 别名做运行时冒烟（见 §5）。所有结论基于实测产物，非记忆断言。
 

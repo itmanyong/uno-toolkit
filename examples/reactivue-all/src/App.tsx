@@ -19,24 +19,26 @@ function NaiveCounter(): React.ReactElement {
   return (
     <div className="demo-box">
       <span className="badge">React setState</span>
-      <p>count: {count}</p>
+      <p>ReactCount: {count}</p>
       <button onClick={() => setCount((value) => value + 1)}>+1</button>
       <p className="metric">
         本组件 React 渲染次数：<strong>{renders.current}</strong>
       </p>
       <p className="hint">每次 +1，整个组件函数重新执行。</p>
+      <p className="hmr-marker">HMR-C-STRUCT-TEST</p>
     </div>
   );
 }
 
 /** 实验组：defineComponent + ref，文本插值被编译为 TextBinding 直写。 */
 const FineCounter = defineComponent(() => {
-  const count = ref(0);
+  const count = ref(100);
   return (
     <div className="demo-box">
       <span className="badge">TextBinding 直写</span>
-      <p>count: {count.value}</p>
+      <p>计数C: {count.value}</p>
       <button onClick={() => (count.value += 1)}>+1</button>
+      <p className="hmr-marker">HMR-C2-FINE-STRUCT-TEST</p>
       <p className="hint">
         块更新只写 Text 节点：宿主 React 渲染次数不增长（看右侧指标 / react-scan
         无高亮）。
@@ -141,7 +143,7 @@ const MemoDemo = defineComponent(() => {
   return (
     <div className="demo-box">
       <span className="badge">MemoBlock</span>
-      <p>普通块（细粒度直写）：{message.value}</p>
+      <p>普通块D（细粒度直写）：{message.value}</p>
       <p v-memo={[epoch.value]}>
         v-memo 块：{message.value} · renderNonce={renderNonce}
       </p>
@@ -177,7 +179,7 @@ const VueUseDemo = defineComponent(() => {
   return (
     <div className="demo-box">
       <span className="badge">VueUse via compat</span>
-      <p>useToggle: {enabled.value ? "ON" : "OFF"}</p>
+      <p>useToggleD: {enabled.value ? "ON" : "OFF"}</p>
       <button onClick={() => toggle()}>toggle</button>
       <p>useNow: {now.value.toLocaleTimeString()}</p>
       <p className="hint">
