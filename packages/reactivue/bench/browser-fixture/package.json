@@ -1,0 +1,7 @@
+{
+  "name": "@uno-pc/reactivue-browser-fixture",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "reactivue 浏览器判定口径 benchmark fixture。不经 pnpm workspace 安装（位于 packages/reactivue/bench 下，不在 workspace globs 内），复用 @uno-pc/reactivue 包的工具链构建。构建（仓库根目录执行）：pnpm --filter @uno-pc/reactivue exec rs build --config bench/browser-fixture/rstack.config.ts ；预览：pnpm --filter @uno-pc/reactivue exec rs preview --config bench/browser-fixture/rstack.config.ts --port 4173 。依赖经 Node 上溯解析自 packages/reactivue/node_modules，@uno-pc/reactivue 经包自身 exports self-reference 指向 dist/index.js（生产产物）。"
+}

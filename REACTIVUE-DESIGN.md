@@ -1180,6 +1180,22 @@ C_rv    = C_setup_once + m·c_b + k·t_b + P       （纯文本路径，零 Reac
 
 **结论：首版不消除，只限定代价并量化。** 假阳性触发的 `bump()` 会让 React render + reconcile，但输出结构相同时 React 不会写 DOM，故代价上界是 `k·t_r`（不是 `k·(t_r + t_dom)`）。把它写进 §14.2 的 `k` 定义（改为「被 notify 的块数」），由 S3 / S12 专门量化；若 S3 超标，通过 `granularity: 'coarse'` 合并相邻块来降低 `m` 与扇出，而不是在运行时加昂贵的输出比较。
 
+#### fingerprint 编译期生成 · 正式定案（2026-11-05）
+
+P-B 的残留问题是「编译期是否为结构块生成 `fingerprint`」。§17.5 偏差表第 5 条已记录该实现取舍（运行时接口就绪、编译期未生成）；本节以 bench 实测数据正式收口。
+
+**论据**（bench 实测，jsdom + dist 产物管线口径，非浏览器生产判定口径）：
+
+- 假阳性的代价上界是 `k·t_r`（输出相同的 reconcile，React 不写 DOM），实测中该上界未构成可观测成本：
+  - S3（m 扇出，一次写入命中全部，最坏即 `k=m` 全量命中）：结构通道 m=128 端到端 **4.044 ms**，React commit 恒 **1**，扇出不 regress；文本通道 commit 恒 **0**。
+  - S12（granularity 三档 × m∈{8,32,128}）：三档全部 **m/m 更新、commit 1 次**。
+  - S1/S2 补充口径：同值写 1000 次 DOM 写 **0** 次（值级抑制）；1000 次异值写合并为 **1** 次 commit。
+- 反观生成侧的确定性成本：元素块输出是每次新建的 ReactElement，运行时值级 `hasChanged` 恒失效；编译期 `fingerprint` 要真正命中「输出未变」，需对渲染输出做等价性分析以提取稳定比较键，转换复杂度与正确性风险显著大于其消除的那「一次无 DOM 写的 reconcile」。
+
+**定案：编译期不生成 `fingerprint`，维持 §17.5 决议，不再作为待办保留。** 运行时 `Block` 的可选 `fingerprint` prop 保留为手动逃生舱（对个别块显式提供比较键时生效）；扇出合并由 `granularity: 'coarse'` 的 `groupKey` 机制承担（已落地，S12 实测三档行为正确）。
+
+**重启条件**：若未来 S12 在生产构建 + 关闭 StrictMode 的浏览器判定口径下取数，且假阳性成本可观测——触发条件：同一 granularity 档位下，`k≈N` 全量写入的端到端耗时相对「无假阳性基线」存在可归因的量级差，或无 DOM 写的 reconcile 成为帧内主要成本——可重启编译期 `fingerprint` 评估。在此之前本项视为已关闭。
+
 ### 15.6 对前文的修订清单
 
 | 章节 | 原表述 | 修订 | 依据 |
@@ -1375,7 +1391,7 @@ const A = _createCompiledHost(() => ({ render: () => (
 | 2 | §13.2 `defineComponent` 外 `v-memo` 的 revision 来源为前置缺口 | 消费为 `_MemoBlock`（块内不切文本）+ 警告 | 满足 R-A「输入中不得残留」；同时避免 §17.2 的非响应式 stale 问题 |
 | 3 | §6.2 `<Block>` 包裹区切为一个 `_Block` | 编译期标记，标签本身被替换 | 语义等价且少一个运行时组件 |
 | 4 | §6.10 setup 内 hooks「保留源码不转换」 | 跳过切块 + 告警（strict 下 error），但其中的 `v-memo` 仍由残留消费步骤处理 | 同上，避免误导性报错 |
-| 5 | P-B / §15.5 假阳性抑制 | 运行时 `fingerprint` 接口就绪，**编译期未生成** | 元素块输出是每次新建的 ReactElement，值级 `hasChanged` 恒失效，生成无收益；`groupKey` 合并已落地 |
+| 5 | P-B / §15.5 假阳性抑制 | 运行时 `fingerprint` 接口就绪，**编译期未生成** | 元素块输出是每次新建的 ReactElement，值级 `hasChanged` 恒失效，生成无收益；`groupKey` 合并已落地；2026-11-05 经 bench S3/S12 实测定案不做，见 §15.5 定案 |
 | 6 | §6.4 属性绑定 | 排除 `key` / `ref` / `on[A-Z]*` | 避免破坏 key 语义与事件闭包（§15.4 G 规则） |
 | 7 | §6.5 列表项递归切分 | 已实现，但可能产出嵌套冗余 `_Block` | 首版正确性优先；聚合阈值待 S12 拟合 |
 
@@ -1383,7 +1399,7 @@ const A = _createCompiledHost(() => ({ render: () => (
 
 ### 17.6 仍未完成
 
-`examples/reactivue-all`、VueUse 实测、S1–S12 benchmark 与 `c_b/t_r` / `D_max` / `N_min` 三个常数拟合、根 README Packages 条目与 website 使用文档页、source map、HMR 状态保留、Rstest 换回 automatic JSX runtime（消除 outdated transform 警告）、SSR/hydration 实测、§17.4 风险的 S11 量化与 §6.6 完整 deps 方案、编译期 `fingerprint`、嵌套冗余块的聚合优化。
+`examples/reactivue-all`、VueUse 实测、S1–S12 benchmark 与 `c_b/t_r` / `D_max` / `N_min` 三个常数拟合、根 README Packages 条目与 website 使用文档页、source map、HMR 状态保留、Rstest 换回 automatic JSX runtime（消除 outdated transform 警告）、SSR/hydration 实测、§17.4 风险的 S11 量化与 §6.6 完整 deps 方案、编译期 `fingerprint`（后已定案不做，见 §15.5 定案）、嵌套冗余块的聚合优化。
 
 ## 18. Rust 拆分、插件顺序修正与 VueUse 实测落地记录（2026-11-05，第三轮）
 
@@ -1472,6 +1488,25 @@ VueUse 15 兼容注记：`useNow` 已移除 `interval` 选项（改 `Configurabl
 
 其余场景结果（jsdom + dist 管线口径，详见 bench/results）：S3 扇出 commit 恒 1；S4 文本通道单项改动 1.14 ms / 0 commit vs 结构块整列表 9.05 ms；S5/S7 帧内分离帧 0（R12）；S8 props 桥 30 轮全部 1 commit（税 2 未观测到分离）；S9 双组 PASS；S10 重收集 PASS；S11 卸载竞态 PASS。S6 hydration 耗时与 S11 restart 计数需浏览器口径，S12 常数拟合需编译产物对比，仍列 §18.11。
 
-### 18.11 仍未完成
+### 18.14 待办清单全量收口（2026-11-05，同日第七轮，四子代理并行）
 
-S1–S12 benchmark 与 `c_b/t_r` / `D_max` / `N_min` 三个常数拟合、根 README Packages 条目、HMR 状态保留、Rstest 换回 automatic JSX runtime（消除 outdated transform 警告）、hydration 实测（SSR 输出形态已有测试）、§17.4 风险的 S11 量化与 §6.6 完整 deps 方案、编译期 `fingerprint`、嵌套冗余块的聚合优化、compat 层 pinia 可行性评估、SSR 真 server 环境（isServer=true 路径）测试。
+四子代理并行完成 §18.11 全部待办：
+
+**① 浏览器判定口径取数（bench-browser）**：`bench/browser-fixture/`（生产构建 + 无 StrictMode）+ `bench/results-browser-2026-11-05.md`（Chrome 156 / Windows 11 / COOP-COOP 5µs 分辨率）。S1 DOM 写合并 1/1000、同值 0、单写落地 p95 0.010ms；S2 结构 vs useState 对照（Block 3 闭包/轮 vs 基线 1）；S3 每块边际成本文本 0.35µs / 结构 2.3µs **线性**；S5 分离帧 0；S12 三档 × m∈{8,32,128} 全部 m/m 更新且 commit 1（生产口径与 jsdom 一致）；S6 hydration 同步 0.18ms、首屏逐字符一致、hydrate 后直写正常；S11 transition 高频写最终一致、中间值未落地、无饿死（restart 精确计数无页面 API，以最终一致性+延迟+DOM 写次数替代口径并如实记录）。**初步拟合**（最小二乘，注明非正式验收）：fine c_b=0.00207ms/块 t_r=0.0283ms（R²=0.9993）、balanced 0.00180/0.0264、coarse 0.00139/0.0452——m 增长无显著超线性。
+
+**② fingerprint 正式定案（design-close）**：§15.5 追加定案小节——维持「编译期不生成」决议，运行时 Block.fingerprint prop 保留为手动逃生舱；重启条件 = 浏览器判定口径数据显示假阳性成本可观测。
+
+**③ 冗余 _Block 聚合定案（数据驱动）**：浏览器实测每块边际成本线性（R²≥0.986、p95 无雪崩），当前 m∈{8,32,128} 范围内聚合优化无可观测收益空间——**定案：暂缓**，重启条件 = m 进入 10²–10³ 量级复测出现超线性。
+
+**④ pinia 可行性评估（pinia-research）**：`docs/PINIA-FEASIBILITY.md`。结论 **「可用（补 1 个导出）」**——pinia 4.1.0 对 vue 的依赖为纯 reactivity + 实例上下文（21 个导入 compat 覆盖 20 个，唯一缺口 `isShallow` 一行再导出）；不依赖 Vue app 实例（setActivePinia 驱动，冒烟实证 PASS）；devtools/SSR 分支安全降级。工作量 0.5–1 人日。
+
+**⑤ 测试基建（test-infra）**：真 server 环境 SSR 测试落地（rstest projects 双环境：jsdom + node，`tests/ssr.node.test.tsx`，env.ts 覆盖率 33%→**100%**）；Rstest 迁移 automatic JSX runtime（outdated transform 警告消除，65/65 全绿）；根 README Packages 条目补齐。
+
+### 18.11 仍未完成（2026-11-05 终版盘点后）
+
+§18.14 已收口：判定口径取数、S6 hydration、S11 观测口径、fingerprint 定案（不做）、冗余聚合定案（暂缓）、pinia 评估（可用）、真 server SSR 测试、automatic JSX runtime、根 README 条目。**仍开放**：
+
+- `c_b / t_r / D_max / N_min` 的**正式验收**：初步拟合已给出（§18.14），但正式验收需按 §14.6 扩大采样（m>128、多浏览器、多次运行统计显著性）。
+- **HMR 状态保留**：未验证（Fast Refresh 默认行为）。
+- **pinia 接入实现**：可行性已定（补 `isShallow` 导出 + 别名注入 + example 验证，0.5–1 人日），作为独立 feature 排期。
+- **编译产物对比口径**：S12 判定数据已含编译产物（browser-fixture 用 ReactivueRsbuild 构建）；如需更细的产物体积/结构对比再议。
