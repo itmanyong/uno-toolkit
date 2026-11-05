@@ -1457,6 +1457,15 @@ VueUse 15 兼容注记：`useNow` 已移除 `interval` 选项（改 `Configurabl
 
 `jsx-directive` 的 source map 已于同轮补齐：`render_node` 增加 `top_edits` 收集参数（仅 root 层聚合的「变化子树整区间 → 变换文本」进入收集，粒度与产物结构对应），entry 层复用 `Utf16Index` 转 UTF-16 输出；`warnings.ts` 的行列换算同步改为 UTF-16 语义（原按字节切 Buffer）。
 
+### 18.12 parent 链缺口修复与 S1/S2 benchmark 骨架（2026-11-05，同日第五轮）
+
+**parent 链缺口修复**：`useHostInstance` 经 `useContext(InstanceContext)` 读父宿主实例并传入 `createHostInstance`（第三参数此前从未被使用），defineComponent 嵌套时 provide/inject 沿 parent 链连通。新增 `tests/define-component-parent.test.tsx`（父子连通 / 三层嵌套向上查找 / 无 provide 时 fallback）。
+
+**S1/S2 benchmark 骨架**（`packages/reactivue/bench/`，jsdom + dist 产物，管线验证数据非浏览器生产口径）：
+- S1 文本通道：同 task 1000 次异值写 → DOM 写 **1 次**（事务合并）、React 渲染 **0 次**；同值 1000 次写 → DOM 写 **0 次**（Object.is 抑制）；单写 100 轮落地延迟 p95 0.0055 ms。
+- S2 结构 vs 文本：1000 次写 → Block commit **1 次**（React Profiler 口径）、DOM 写 1 次；单写 100 轮端到端 p95 0.2538 ms；原生 React useState 基线同口径对照。Block 每次 commit 3 次 render 闭包（txn 重收集 / fiber render / layout effect 重建）为结构性成本，已记录构成。
+- S3–S12 以 TODO 清单列入 bench/README.md。数据仅管线验证口径，不参与 §14.6/§15.7 准入判定，不做倍数宣称。
+
 ### 18.11 仍未完成
 
 S1–S12 benchmark 与 `c_b/t_r` / `D_max` / `N_min` 三个常数拟合、根 README Packages 条目、HMR 状态保留、Rstest 换回 automatic JSX runtime（消除 outdated transform 警告）、hydration 实测（SSR 输出形态已有测试）、§17.4 风险的 S11 量化与 §6.6 完整 deps 方案、编译期 `fingerprint`、嵌套冗余块的聚合优化、compat 层 pinia 可行性评估、SSR 真 server 环境（isServer=true 路径）测试。
