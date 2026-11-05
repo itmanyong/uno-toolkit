@@ -57,18 +57,22 @@ export function MemoBlock({
   // 「额外触发源」的通知通道：deps 中的响应式依赖（纯 ref、reactive props 等）
   // 不一定有 React 侧订阅者（deps 求值带 pauseTracking 且只发生在本组件 render 时），
   // 纯 ref deps 的变化若无此 effect 将永远不会触发刷新。这里显式订阅 deps 的响应式
-  // 依赖，trigger 后在微任务事务中重新求值并比较，变化才 revision++；
+  // 依赖，trigger 后推迟到微任务再比较——syncProps 在宿主 render 阶段写入 reactive
+  // props 时会同步触发本 scheduler，若当场 setRevision 会命中 React 的
+  // "setState during render of a different component" 警告；微任务已脱离渲染栈。
   // React 渲染路径上方的比较保留为兜底，两条路径经 lastRef 同步后幂等。
   useLayoutEffect(() => {
     const runner = effect(
       () => depsRef.current(),
       {
         scheduler: () => {
-          const next = depsRef.current();
-          if (lastRef.current !== null && !sameDeps(lastRef.current, next)) {
-            lastRef.current = next;
-            setRevision((value) => value + 1);
-          }
+          queueMicrotask(() => {
+            const next = depsRef.current();
+            if (lastRef.current !== null && !sameDeps(lastRef.current, next)) {
+              lastRef.current = next;
+              setRevision((value) => value + 1);
+            }
+          });
         },
       },
     );

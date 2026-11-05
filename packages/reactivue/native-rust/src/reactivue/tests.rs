@@ -190,3 +190,36 @@ fn block_marker_becomes_single_block() {
     assert!(!result.code.contains("<Block>"));
     assert_parses(&result.code);
 }
+
+#[test]
+fn exposes_source_edits_for_sourcemap() {
+    let code = "const A = defineComponent(() => <p>{n.value}</p>);";
+    let result = run(code, "a.tsx");
+    assert!(!result.edits.is_empty());
+    // 至少包含 defineComponent → createCompiledHost 的标识符替换
+    assert!(result
+        .edits
+        .iter()
+        .any(|edit| edit.replacement.contains("createCompiledHost")));
+    // 未变化文件输出空编辑列表
+    let untouched = run("const B = <p />;", "a.tsx");
+    assert!(untouched.edits.is_empty());
+}
+
+#[test]
+fn exposes_utf16_offsets_for_multibyte_source() {
+    // 中文注释每个字符占 3 个 UTF-8 字节 / 1 个 UTF-16 code unit：
+    // 输出偏移必须按 UTF-16 计，否则 JS 侧（MagicString）错位。
+    let code = "const 说明 = 1;\nconst A = defineComponent(() => <p>{n.value}</p>);";
+    let result = run(code, "a.tsx");
+    assert!(!result.edits.is_empty());
+    let identifier_edit = result
+        .edits
+        .iter()
+        .find(|edit| edit.replacement.contains("createCompiledHost"))
+        .expect("identifier edit 应存在");
+    // defineComponent 在「中文行 + 换行 + const A = 」之后：
+    // UTF-16 偏移 = "const 说明 = 1;\nconst A = ".chars().count()
+    let expected_start = "const 说明 = 1;\nconst A = ".chars().count();
+    assert_eq!(identifier_edit.start as usize, expected_start);
+}

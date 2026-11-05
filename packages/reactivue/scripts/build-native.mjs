@@ -47,10 +47,21 @@ if (cross) {
 
 const args = ["build", "--release"];
 if (cross) args.push("--target", cfg.cargo);
+
+// musl 目标默认 crt-static（静态 libc），而 cdylib 需要动态 libc，
+// 必须显式关闭 crt-static 才能构建 .so（napi-rs 官方做法）
+const env = { ...process.env };
+if (cfg.cargo.includes("musl")) {
+  env.RUSTFLAGS = [env.RUSTFLAGS, "-C", "target-feature=-crt-static"]
+    .filter(Boolean)
+    .join(" ");
+}
+
 const cargo = spawnSync("cargo", args, {
   cwd: rustRoot,
   stdio: "inherit",
   timeout: 300_000,
+  env,
 });
 if (cargo.error) throw cargo.error;
 if (cargo.status !== 0) process.exit(cargo.status ?? 1);

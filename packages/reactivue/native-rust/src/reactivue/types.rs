@@ -24,6 +24,16 @@ pub struct TransformResult {
     pub code: String,
     pub warnings: Vec<Warning>,
     pub errors: Vec<Warning>,
+    /// 顶层编辑区间（原始源码 UTF-16 偏移 → 替换文本），供 TS 侧生成 source map。
+    pub edits: Vec<SourceEdit>,
+}
+
+#[napi(object)]
+#[derive(Debug)]
+pub struct SourceEdit {
+    pub start: u32,
+    pub end: u32,
+    pub replacement: String,
 }
 
 #[derive(Clone)]

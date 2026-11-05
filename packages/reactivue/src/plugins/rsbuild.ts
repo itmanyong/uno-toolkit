@@ -1,4 +1,5 @@
 import type { RsbuildPlugin } from "@rsbuild/core";
+import { buildSourceMap } from "./sourcemap";
 import { getFormats, toFilePattern, VUE_ALIAS } from "./shared";
 import type { ReactivueTransformOptions } from "./shared";
 import { transformReactivue } from "./transform";
@@ -37,7 +38,11 @@ export function ReactivueRsbuild(
           for (const warning of result.warnings) {
             api.logger.warn(`${warning.start}: ${warning.message}`);
           }
-          return result.code === code ? code : { code: result.code, map: null };
+          if (result.code === code) return code;
+          if (result.edits && result.edits.length > 0) {
+            return buildSourceMap(code, resourcePath, result.edits);
+          }
+          return { code: result.code, map: null };
         },
       );
     },

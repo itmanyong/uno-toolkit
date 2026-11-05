@@ -67,6 +67,8 @@ export function Block({
   const store = useMemo<BlockStore>(createBlockStore, []);
   const runnerRef = useRef<ReactiveEffectRunner | null>(null);
   const cellRef = useRef<BlockCell | null>(null);
+  // 首次 commit 不算「更新」：onUpdated 语义对齐 Vue（mount 不触发）。
+  const hasCommittedRef = useRef(false);
 
   useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
 
@@ -93,10 +95,21 @@ export function Block({
     // 与 setup 同步相邻，窗口内不会插入 flush 微任务。
     cell.alive = true;
     const runner = effect(() => renderRef.current(), {
-      scheduler: () => scheduleBlock(cell),
+      scheduler: () => {
+        // trigger 发生在块更新链路起点（flush → bump → commit 之前），
+        // 此处触发 beforeUpdate，与 commit 阶段的 updated 成对。
+        if (instance !== null && hasCommittedRef.current) {
+          runHooks(instance, "beforeUpdate");
+        }
+        scheduleBlock(cell);
+      },
     });
     runnerRef.current = runner;
-    if (instance !== null) runHooks(instance, "updated");
+    // 首次 commit 是 mount，不算更新；此后每次块 commit 触发 updated。
+    if (instance !== null && hasCommittedRef.current) {
+      runHooks(instance, "updated");
+    }
+    hasCommittedRef.current = true;
     onCommitDone(cell);
     return () => {
       stop(runner);

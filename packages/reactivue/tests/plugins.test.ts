@@ -42,8 +42,13 @@ test("Vite 插件透传告警，strict 错误直接抛出", () => {
   if (!hook) throw new Error("缺少 transform hook");
   const handler = typeof hook === "function" ? hook : hook.handler;
   const context = { warn: (message: string) => warnings.push(message) };
-  const result = Reflect.apply(handler, context, [source, "A.tsx"]);
-  expect(result).toMatchObject({ map: null });
+  const result = Reflect.apply(handler, context, [source, "A.tsx"]) as {
+    code: string;
+    map: string | null;
+  };
+  // 非数组 v-memo 会被消费（代码有变化），应携带有效 source map
+  expect(result.map).toBeTruthy();
+  expect(JSON.parse(result.map ?? "{}").version).toBe(3);
   expect(warnings).toHaveLength(1);
 
   const strictHook = ReactivueVite({ strict: true }).transform;
@@ -77,4 +82,37 @@ test("Rsbuild 插件默认注入 alias，alias:false 时不注入", () => {
   modifier = undefined;
   ReactivueRsbuild({ alias: false }).setup?.(api);
   expect(modifier).toBeUndefined();
+});
+
+test("有代码变化时输出 source map，未变化时保持 map: null", () => {
+  const source = "const A = defineComponent(() => <p>{n.value}</p>);";
+  const hook = ReactivueVite().transform;
+  if (!hook) throw new Error("缺少 transform hook");
+  const handler = typeof hook === "function" ? hook : hook.handler;
+  const result = Reflect.apply(handler, {}, [source, "A.tsx"]) as {
+    code: string;
+    map: string | null;
+  };
+  // 产物与 map 同源：code 由同一组编辑生成
+  expect(result.code).toContain("_createCompiledHost");
+  expect(result.map).toBeTruthy();
+  const map = JSON.parse(result.map ?? "{}") as {
+    version: number;
+    sources: string[];
+    sourcesContent: string[];
+    mappings: string;
+  };
+  expect(map.version).toBe(3);
+  expect(map.sources).toContain("A.tsx");
+  expect(map.sourcesContent[0]).toBe(source);
+  expect(map.mappings.length).toBeGreaterThan(0);
+
+  // 未变化的代码：返回 null（Vite 语义），不带 map
+  const skipHook = ReactivueVite({ formats: [".JSX"] });
+  const skipTransform = skipHook.transform;
+  if (!skipTransform) throw new Error("缺少 transform hook");
+  const skipHandler = typeof skipTransform === "function" ? skipTransform : skipTransform.handler;
+  expect(
+    Reflect.apply(skipHandler, {}, [source, "component.tsx"]),
+  ).toBeNull();
 });

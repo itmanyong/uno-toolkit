@@ -107,11 +107,11 @@
     "doc": "rs doc"
   },
   "peerDependencies": {
+    "@rsbuild/core": ">=2.3.0 <3",
     "@vue/reactivity": ">=3.5",
     "react": ">=19",
     "react-dom": ">=19",
-    "vite": "^6.0.0 || ^7.0.0 || ^8.0.0",
-    "@rsbuild/core": ">=2.3.0 <3"
+    "vite": "^6.0.0 || ^7.0.0 || ^8.0.0"
   },
   "peerDependenciesMeta": {
     "vite": {
@@ -123,6 +123,7 @@
   },
   "devDependencies": {
     "@rsbuild/core": "catalog:",
+    "@rstest/coverage-istanbul": "^0.12.6",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -134,5 +135,8 @@
     "rstack": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:"
+  },
+  "dependencies": {
+    "magic-string": "^1.4.5"
   }
 }

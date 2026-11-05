@@ -126,8 +126,9 @@ configureTxn({ granularity: "coarse" });
 
 ## 已知限制
 
-- 首版不生成 source map；HMR 沿用 React Fast Refresh 默认行为。
-- 文本通道依赖一个隐藏 `<span>` 锚点定位 `Text` 节点；SSR 输出 `initialText` + 锚点，hydration 首屏值一致。
+- transform 已输出 **source map**（编辑区间粒度，含 sourcesContent；需在构建配置开启 sourceMap）；`jsx-directive` 的 map 尚未实现。
+- HMR 沿用 React Fast Refresh 默认行为，状态保留未验证。
+- 文本通道依赖一个隐藏 `<span>` 锚点定位 `Text` 节点；SSR 输出 `initialText` + 锚点（`tests/ssr.test.tsx` 验证输出形态），hydration 首屏值一致。
 - `TextBinding` 收到对象值会降级为 `String()` 并在 DEV 告警。
 - 结构块仍走 React render + reconcile，性能上限不超过「手工极致 memo 的 React」；项目级收益 = 覆盖率 × JS 占帧比（见设计 §14）。
 - 实测 benchmark（S1–S12）尚未执行，**不宣称任何性能提升倍数**。

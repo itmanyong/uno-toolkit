@@ -1,4 +1,5 @@
 import type { Plugin } from "vite";
+import { buildSourceMap } from "./sourcemap";
 import {
   getFormats,
   toFilePattern,
@@ -30,7 +31,11 @@ export function ReactivueVite(
       for (const warning of result.warnings) {
         this.warn(`${warning.start}: ${warning.message}`);
       }
-      return result.code === code ? null : { code: result.code, map: null };
+      if (result.code === code) return null;
+      if (result.edits && result.edits.length > 0) {
+        return buildSourceMap(code, id, result.edits);
+      }
+      return { code: result.code, map: null };
     },
   };
 }

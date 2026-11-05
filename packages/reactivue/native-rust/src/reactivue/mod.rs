@@ -19,7 +19,8 @@ use self::ast::{
 };
 use self::jsx::transform_jsx;
 use self::setup::build_import;
-use self::types::{Ctx, Edit, Names, RenderKind, Used};
+use self::types::{Ctx, Edit, Names, RenderKind, SourceEdit, Used};
+use self::utils::Utf16Index;
 use self::utils::{
     apply_edits, extension_of, import_position, normalized_formats, unique_identifier, warn,
 };
@@ -39,6 +40,7 @@ pub fn reactivue_transform(
             code,
             warnings: vec![],
             errors: vec![],
+            edits: vec![],
         });
     }
 
@@ -52,6 +54,7 @@ pub fn reactivue_transform(
             code,
             warnings: vec![],
             errors: vec![],
+            edits: vec![],
         });
     };
     if tree.root_node().has_error() {
@@ -59,6 +62,7 @@ pub fn reactivue_transform(
             code,
             warnings: vec![],
             errors: vec![],
+            edits: vec![],
         });
     }
 
@@ -194,9 +198,32 @@ pub fn reactivue_transform(
         });
     }
 
+    // 输出给 JS 的偏移统一为 UTF-16 code unit（MagicString / 字符串索引语义），
+    // 内部 tree-sitter 与 apply_edits 使用 UTF-8 字节偏移，必须转换。
+    let utf16_index = Utf16Index::build(&code);
+    let convert = |offset: usize| utf16_index.convert(offset);
+    let mut warnings = std::mem::take(&mut ctx.warnings);
+    for warning in &mut warnings {
+        warning.start = convert(warning.start as usize);
+        warning.end = convert(warning.end as usize);
+    }
+    let mut errors = std::mem::take(&mut ctx.errors);
+    for error in &mut errors {
+        error.start = convert(error.start as usize);
+        error.end = convert(error.end as usize);
+    }
+    let source_edits = edits
+        .iter()
+        .map(|edit| SourceEdit {
+            start: convert(edit.start),
+            end: convert(edit.end),
+            replacement: edit.replacement.clone(),
+        })
+        .collect();
     Ok(TransformResult {
         code: apply_edits(&code, 0, edits),
-        warnings: ctx.warnings,
-        errors: ctx.errors,
+        warnings,
+        errors,
+        edits: source_edits,
     })
 }
