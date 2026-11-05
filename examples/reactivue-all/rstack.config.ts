@@ -5,6 +5,8 @@ import { JsxDirectiveRsbuild } from "@uno-pc/jsx-directive/rsbuild";
 define.app(async () => {
   const { pluginReact } = await import("@rsbuild/plugin-react");
   return {
+    // 生产也输出 source map：验证 reactivue / jsx-directive 的 transform map 全链路。
+    output: { sourceMap: true },
     plugins: [
       pluginReact(),
       // R-A 契约：reactivue 先注册，先消费 v-memo；

@@ -1442,6 +1442,19 @@ VueUse 15 兼容注记：`useNow` 已移除 `interval` 选项（改 `Configurabl
 
 修复：layout effect setup（effect 重建处）显式恢复 `cell.alive = true`；cleanup 与 setup 同步相邻，窗口内不会插入 flush 微任务。新增「结构块连续多次依赖更新都生效」回归单测（修复前稳定复现第二次失效）；修复后 reactivue `rs test` **36/36**，浏览器复验：结构块 3 次追加 + 1 次移除全部生效（3→5）、v-memo 连续 deps 刷新正常、各 section 宿主渲染计数保持 1（生产构建下首次交互不存在跨 section 重渲染；dev 下 react-scan 首帧高亮为初始化显示）。
 
-### 18.9 仍未完成
+### 18.10 覆盖率基线、生命周期/SSR 测试与 source map 落地（2026-11-05，第四轮）
 
-S1–S12 benchmark 与 `c_b/t_r` / `D_max` / `N_min` 三个常数拟合、根 README Packages 条目与 website 使用文档页、source map、HMR 状态保留、Rstest 换回 automatic JSX runtime（消除 outdated transform 警告）、SSR/hydration 实测、§17.4 风险的 S11 量化与 §6.6 完整 deps 方案、编译期 `fingerprint`、嵌套冗余块的聚合优化、compat 层 pinia 可行性评估。（§17.6 中的 example、VueUse 实测两项本轮完成。）
+**覆盖率基线**（`rs test --coverage`，@rstest/coverage-istanbul）：总体语句 87.05% / 分支 72.93% / 行 89.02%；react 层 97.5%/90%。本轮新增 3 个测试文件：`nesting`（React↔reactivue 双向与四层嵌套）、`edge-cases`（六生命周期钩子语义、钩子容错、TextBinding 边界值、StrictMode 双挂载、错误边界、卸载竞态）、`ssr`（renderToString 输出形态）。
+
+**实测再次发现两处缺陷并修复**：
+
+1. `MemoBlock` deps 通知通道在 React **render 阶段**触发 `setRevision`（syncProps 写 reactive props → 同步 trigger），命中 React 的 "setState during render of a different component" 警告。修复：比较与 `setRevision` 推迟到微任务，脱离渲染栈。
+2. 生命周期接线缺口：**mount 首次 commit 误触发 `onUpdated`**（且 layout effect 先于 passive effect，顺序错在 mounted 之前）；**`onBeforeUpdate` 从未接线**。修复：Block 增加 `hasCommittedRef`，首次 commit 不触发 updated；beforeUpdate 在 effect scheduler（trigger 时）触发，与 updated 成对。
+
+**source map（reactivue 插件）**：native `TransformResult` 新增 `edits`（顶层编辑区间），TS 侧 `buildSourceMap` 用 magic-string 生成（区间粒度，含 sourcesContent），Vite/Rsbuild 插件透传；example 开启 `output.sourceMap` 后产物 `.map` 的 sources/sourcesContent 验证通过。**过程中发现并修复偏移语义缺陷：native 输出为 UTF-8 字节偏移，MagicString 使用 UTF-16 code unit 索引，含多字节字符（中文注释）的源码全部错位**——Rust 侧新增 `Utf16Index`，warnings/errors/edits 输出前统一转 UTF-16，并有含中文的专项 Rust 测试。
+
+`jsx-directive` 的 source map 未实现（其编辑收集嵌在递归 render_node 内，暴露顶层区间需架构级重构），列入 §18.11。
+
+### 18.11 仍未完成
+
+S1–S12 benchmark 与 `c_b/t_r` / `D_max` / `N_min` 三个常数拟合、根 README Packages 条目、HMR 状态保留、Rstest 换回 automatic JSX runtime（消除 outdated transform 警告）、hydration 实测（SSR 输出形态已有测试）、§17.4 风险的 S11 量化与 §6.6 完整 deps 方案、编译期 `fingerprint`、嵌套冗余块的聚合优化、compat 层 pinia 可行性评估、**`jsx-directive` 的 source map**、SSR 真 server 环境（isServer=true 路径）测试。
