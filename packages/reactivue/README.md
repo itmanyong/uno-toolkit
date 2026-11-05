@@ -65,6 +65,37 @@ const A = _createCompiledHost(() => ({ render: () => (
 
 切块范围：文本插值 → `_TextBinding`（零 `useSyncExternalStore`）；含 JSX/函数/对象/数组的复杂表达式、带动态属性的元素 → `_Block`；`v-memo` → `_MemoBlock`；`<Block>` 是编译期强制边界标记。条件/列表/嵌套 JSX 递归切分。**只在 `defineComponent` 内切文本块** —— 普通 React 组件里的非响应式局部变量没有 trigger，切开后会永不更新。
 
+## useSetup / createSetup（普通 React 组件内用组合式 API）
+
+不想用 `defineComponent` 时，可在普通 React 函数组件内直接使用组合式 API：
+
+```tsx
+import { createSetup, useSetup } from "@uno-pc/reactivue";
+
+const useCounter = createSetup((props: { base: number }) => {
+  const count = ref(props.base);
+  const doubled = computed(() => count.value * 2);
+  return { count, doubled };
+});
+
+function Demo({ base }: { base: number }) {
+  // 或直接 useSetup((props) => {...}, { base })
+  const { count, doubled } = useCounter({ base });
+  return (
+    // 返回值经 proxyRefs 解包：读写 state.count 等价 count.value
+    <button onClick={() => (state.count += 1)}>{state.doubled}</button>
+  );
+}
+```
+
+语义与约束（与设计 §5.4 一致）：
+
+- **setup 只跑一次**；在独立实例作用域内运行，setup 内的 watch 随组件卸载释放。
+- **返回值经 proxyRefs 解包**：`state.count` 等价 `count.value`；解包对象解构后会丢失可写代理，请整体访问（`state.count += 1`）。
+- **props 桥**：reactive props 在 render 阶段同步；`ref(props.x)` 是初值快照不回填，响应 props 变化请用 `computed(() => props.x)`。
+- **更新粒度是组件级重渲染**（deep traverse → 微任务 setTick），不享受编译期切块的细粒度更新——这是本 API 与 `defineComponent` 的核心取舍。
+- 生命周期（onMounted/onUnmounted 等）可用，StrictMode 下不重复触发、状态保留。
+
 ## 插件注册
 
 ```ts

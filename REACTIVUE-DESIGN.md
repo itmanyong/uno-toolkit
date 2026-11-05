@@ -302,6 +302,8 @@ function createSetup<S, P>(setup: (props: P) => S): (props: P) => UnwrapRef<S>
 
 提供给「不想用 `defineComponent`、想在普通 React 组件里用组合式 API」的场景。此时渲染函数仍是普通 React 函数组件，**更新粒度为组件级**（与 reactivue 相同），不享受细粒度优化。文档需明示这一点，避免误用。
 
+**【2026-11-05 实现落地】** `src/useSetup.ts`：setup 只跑一次（useRef 惰性初始化）+ 独立实例作用域（`createInstance` + `withInstance`，parent 挂接 `getCurrentInstance()`，defineComponent setup 内调用时 provide/inject 链连通）；返回值经 `proxyRefs` 解包（`UnwrapRef<S>` 为浅层映射类型）；props 桥在 render 阶段幂等同步（`ref(props.x)` 是初值快照不回填，响应变化用 computed）；组件级重渲染桥 = deep traverse effect → 微任务 setTick；生命周期与 useHostInstance 同款（StrictMode 微任务复查 dispose，mounted 钩子经 useRef 标志去重不随 remount 重复触发）。`createSetup(setup)` 返回 `(props) => useSetup(setup, props)`。7 个用例见 `tests/use-setup.test.tsx`。
+
 ### 5.5 `<Block>` 组件【设计】
 
 ```ts

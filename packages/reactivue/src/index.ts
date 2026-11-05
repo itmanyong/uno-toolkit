@@ -48,6 +48,8 @@ export {
   onBeforeUnmount,
   onUnmounted,
 } from "./react/lifecycle";
+export { useSetup, createSetup } from "./useSetup";
+export type { UnwrapRef } from "./useSetup";
 export { configureTxn, getGranularity } from "./core/txn";
 export type { Granularity } from "./core/txn";
 export type {
