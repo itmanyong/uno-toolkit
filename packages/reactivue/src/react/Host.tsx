@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useContext, useEffect, useLayoutEffect, useRef } from "react";
 import type { FC } from "react";
 import {
   createHostInstance,
@@ -21,9 +21,12 @@ export function useHostInstance<P extends object>(
   setup: Setup<P>,
   reactProps: P,
 ): HostInstance<P> {
+  // 父组件渲染时经 InstanceContext 提供其宿主实例；挂载惰性初始化只跑一次，
+  // 静态组件树下此处读到的即为父实例，据此接通 provide/inject 的 parent 链。
+  const parentInstance = useContext(InstanceContext);
   const ref = useRef<HostInstance<P> | null>(null);
   if (ref.current === null) {
-    ref.current = createHostInstance(reactProps, setup);
+    ref.current = createHostInstance(reactProps, setup, parentInstance);
   }
   const host = ref.current;
 
