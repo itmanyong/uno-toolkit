@@ -28,6 +28,16 @@ pub struct TransformResult {
     pub warnings: Vec<Warning>,
     /// 编译期阻断错误（R-A：残留 v-memo），插件侧必须 throw。
     pub errors: Vec<Warning>,
+    /// 顶层编辑区间（原码 UTF-16 偏移 → 替换文本），供 TS 侧生成 source map。
+    pub edits: Vec<SourceEdit>,
+}
+
+#[napi(object)]
+#[derive(Debug)]
+pub struct SourceEdit {
+    pub start: u32,
+    pub end: u32,
+    pub replacement: String,
 }
 
 #[derive(Clone)]

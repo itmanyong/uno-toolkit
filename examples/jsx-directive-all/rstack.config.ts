@@ -4,6 +4,8 @@ import { JsxDirectiveRsbuild } from "@uno-pc/jsx-directive/rsbuild";
 define.app(async () => {
   const { pluginReact } = await import("@rsbuild/plugin-react");
   return {
+    // 生产也输出 source map：验证 jsx-directive 的 transform map 全链路。
+    output: { sourceMap: true },
     plugins: [
       JsxDirectiveRsbuild({
         prefix: "v-",

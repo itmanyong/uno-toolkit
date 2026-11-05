@@ -126,7 +126,7 @@ configureTxn({ granularity: "coarse" });
 
 ## 已知限制
 
-- transform 已输出 **source map**（编辑区间粒度，含 sourcesContent；需在构建配置开启 sourceMap）；`jsx-directive` 的 map 尚未实现。
+- transform 已输出 **source map**（编辑区间粒度，含 sourcesContent；reactivue 与 jsx-directive 均已支持，需在构建配置开启 sourceMap）。
 - HMR 沿用 React Fast Refresh 默认行为，状态保留未验证。
 - 文本通道依赖一个隐藏 `<span>` 锚点定位 `Text` 节点；SSR 输出 `initialText` + 锚点（`tests/ssr.test.tsx` 验证输出形态），hydration 首屏值一致。
 - `TextBinding` 收到对象值会降级为 `String()` 并在 DEV 告警。

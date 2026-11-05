@@ -134,7 +134,7 @@ pub(crate) fn build_conditional(
     let rendered_branches = branches
         .iter()
         .map(|(index, condition)| {
-            render_node(children[*index], source, config, warnings, true)
+            render_node(children[*index], source, config, warnings, true, None)
                 .map(|branch| (condition, branch))
         })
         .collect::<Result<Vec<_>>>()?;

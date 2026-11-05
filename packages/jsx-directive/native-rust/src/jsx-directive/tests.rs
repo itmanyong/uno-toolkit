@@ -451,3 +451,21 @@ use tree_sitter::Parser;
         assert!(result.warnings.is_empty());
     }
 
+
+#[test]
+fn exposes_source_edits_with_utf16_offsets() {
+    let code = "const 说明 = 1;\nconst A = () => <div v-show={visible} />;";
+    let result = transform_source(code);
+    assert!(!result.edits.is_empty(), "v-show 变换应产生编辑");
+    // 所有编辑偏移必须落在 UTF-16 边界内（不越过原码字符数）
+    let char_len = code.chars().count();
+    for edit in &result.edits {
+        assert!(edit.start <= char_len as u32);
+        assert!(edit.end <= char_len as u32);
+    }
+    // 存在 v-show 的样式属性编辑
+    assert!(result
+        .edits
+        .iter()
+        .any(|edit| edit.replacement.contains("display")));
+}

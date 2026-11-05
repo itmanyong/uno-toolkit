@@ -1,5 +1,6 @@
 import type { RsbuildPlugin } from "@rsbuild/core";
 import { getFormats, transformDirectives } from "../core";
+import { buildSourceMap } from "./sourcemap";
 import type { DirectiveTransformConfig } from "../core/types";
 import { reportWarnings, throwOnErrors } from "../shared/warnings";
 
@@ -25,7 +26,11 @@ export const JsxDirectiveRsbuild = (
             `${warning.id}:${warning.loc.line}:${warning.loc.column + 1}: ${warning.message}`,
           );
         });
-        return result.code === code ? code : { code: result.code, map: null };
+        if (result.code === code) return code;
+        if (result.edits && result.edits.length > 0) {
+          return buildSourceMap(code, resourcePath, result.edits);
+        }
+        return { code: result.code, map: null };
       },
     );
   },

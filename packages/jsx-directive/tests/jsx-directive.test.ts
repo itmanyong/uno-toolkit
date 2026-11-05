@@ -21,9 +21,11 @@ test("按配置的 display 样式转换 v-show", () => {
 test("不支持的文件格式保持源码不变", () => {
   const code = "<div v-show={visible} />";
 
+  // 不支持的格式：提前返回，edits 为空
   expect(transformDirectives(code, "component.vue")).toEqual({
     code,
     warnings: [],
+    edits: [],
   });
 });
 
@@ -65,8 +67,13 @@ test("v-html 与 v-text 替换原有子节点", () => {
   expect(html).toEqual({
     code: "<div dangerouslySetInnerHTML={{ __html: markup }}></div>",
     warnings: [],
+    edits: expect.any(Array),
   });
-  expect(text).toEqual({ code: "<div >{message}</div>", warnings: [] });
+  expect(text).toEqual({
+    code: "<div >{message}</div>",
+    warnings: [],
+    edits: expect.any(Array),
+  });
 });
 
 test("v-for 展开列表并保留循环变量与嵌套元素", () => {
@@ -90,6 +97,7 @@ test("v-bind 支持对象展开、命名属性与简写", () => {
   expect(result).toEqual({
     code: "<div title={title} id={elementId} {...(props)} />",
     warnings: [],
+    edits: expect.any(Array),
   });
 });
 

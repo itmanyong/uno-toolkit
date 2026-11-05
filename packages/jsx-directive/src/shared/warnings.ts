@@ -14,7 +14,8 @@ const positionAt = (
   source: string,
   offset: number,
 ): { line: number; column: number } => {
-  const before = Buffer.from(source).subarray(0, offset).toString();
+  // native 输出的偏移已统一为 UTF-16 code unit（与 JS 字符串索引一致）
+  const before = source.slice(0, offset);
   const lines = before.split("\n");
   return {
     line: lines.length,

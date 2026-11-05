@@ -101,8 +101,8 @@
     "fmt": "rs fmt"
   },
   "peerDependencies": {
-    "@types/react": ">=18",
     "@rsbuild/core": ">=2.3.0 <3",
+    "@types/react": ">=18",
     "vite": "^6.0.0 || ^7.0.0 || ^8.0.0"
   },
   "peerDependenciesMeta": {
@@ -117,11 +117,14 @@
     }
   },
   "devDependencies": {
+    "@rsbuild/core": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
-    "@rsbuild/core": "catalog:",
     "rstack": "catalog:",
-    "vite": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  },
+  "dependencies": {
+    "magic-string": "^1.4.5"
   }
 }

@@ -84,3 +84,37 @@ pub(crate) fn apply_edits(source: &str, start: usize, end: usize, mut edits: Vec
     output.push_str(&source[cursor..end]);
     output
 }
+
+/// 构建「字节偏移 → UTF-16 code unit 偏移」索引。
+/// JS 侧（MagicString / 字符串切片）使用 UTF-16 索引，
+/// tree-sitter 与 Rust 内部使用字节偏移，输出前必须转换。
+pub(crate) struct Utf16Index {
+    byte_positions: Vec<usize>,
+    utf16_acc: Vec<u32>,
+}
+
+impl Utf16Index {
+    pub(crate) fn build(code: &str) -> Self {
+        let mut byte_positions = Vec::with_capacity(code.len() + 1);
+        let mut utf16_acc = Vec::with_capacity(code.len() + 1);
+        let mut acc: u32 = 0;
+        for (byte_idx, ch) in code.char_indices() {
+            byte_positions.push(byte_idx);
+            utf16_acc.push(acc);
+            acc += ch.len_utf16() as u32;
+        }
+        byte_positions.push(code.len());
+        utf16_acc.push(acc);
+        Self {
+            byte_positions,
+            utf16_acc,
+        }
+    }
+
+    pub(crate) fn convert(&self, byte_offset: usize) -> u32 {
+        match self.byte_positions.binary_search(&byte_offset) {
+            Ok(index) => self.utf16_acc[index],
+            Err(index) => self.utf16_acc.get(index).copied().unwrap_or_default(),
+        }
+    }
+}

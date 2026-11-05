@@ -1,5 +1,6 @@
 import type { Plugin } from "vite";
 import { getFormats, transformDirectives } from "../core";
+import { buildSourceMap } from "./sourcemap";
 import type { DirectiveTransformConfig } from "../core/types";
 import { reportWarnings, throwOnErrors } from "../shared/warnings";
 
@@ -23,7 +24,11 @@ export const JsxDirectiveVite = (
           `${warning.id}:${warning.loc.line}:${warning.loc.column + 1}: ${warning.message}`,
         );
       });
-      return result.code === code ? null : { code: result.code, map: null };
+      if (result.code === code) return null;
+      if (result.edits && result.edits.length > 0) {
+        return buildSourceMap(code, id, result.edits);
+      }
+      return { code: result.code, map: null };
     },
   };
 };

@@ -20,6 +20,7 @@ pub(crate) fn render_node(
     config: &Config,
     warnings: &mut Vec<Warning>,
     strip_own_condition: bool,
+    top_edits: Option<&mut Vec<Edit>>,
 ) -> Result<String> {
     let kind = node.kind();
     if kind == "jsx_opening_element" || kind == "jsx_self_closing_element" {
@@ -50,7 +51,8 @@ pub(crate) fn render_node(
         }
         let strip_child_condition =
             is_jsx_node(kind) && child.kind() == "jsx_opening_element" && strip_own_condition;
-        let text = render_node(*child, source, config, warnings, strip_child_condition)?;
+        let text =
+            render_node(*child, source, config, warnings, strip_child_condition, None)?;
         if text != source[child.start_byte()..child.end_byte()] {
             edits.push(Edit {
                 start: child.start_byte(),
@@ -60,6 +62,9 @@ pub(crate) fn render_node(
         }
     }
 
+    if let Some(out) = top_edits {
+        out.extend(edits.iter().cloned());
+    }
     let rendered = apply_edits(source, node.start_byte(), node.end_byte(), edits);
     Ok(wrap_for(
         node,

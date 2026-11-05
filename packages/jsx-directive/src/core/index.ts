@@ -28,5 +28,9 @@ export const transformDirectives = (
   // 无阻断错误时不暴露 errors 字段，保持既有返回结构稳定（errors 为可选）。
   return result.errors?.length
     ? result
-    : { code: result.code, warnings: result.warnings };
+    : {
+        code: result.code,
+        warnings: result.warnings,
+        edits: result.edits,
+      };
 };

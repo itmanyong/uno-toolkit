@@ -6,6 +6,8 @@ use tree_sitter::Parser;
 use crate::jsx_directive::directives::v_memo::collect_memo_errors;
 use crate::jsx_directive::parser::TSX_PARSER;
 use crate::jsx_directive::render::render_node;
+use crate::jsx_directive::types::SourceEdit;
+use crate::jsx_directive::utils::Utf16Index;
 use crate::jsx_directive::shorthand::normalize_shorthand;
 use crate::jsx_directive::types::{Config, TransformOptions, TransformResult};
 use crate::jsx_directive::utils::has_directive_candidate;
@@ -23,6 +25,7 @@ pub fn jsx_directive(
             .eq_ignore_ascii_case(extension)
     }) {
         return Ok(TransformResult {
+            edits: vec![],
             code,
             warnings: Vec::new(),
             errors: Vec::new(),
@@ -30,6 +33,7 @@ pub fn jsx_directive(
     }
     if !has_directive_candidate(&code, &config.prefix) {
         return Ok(TransformResult {
+            edits: vec![],
             code,
             warnings: Vec::new(),
             errors: Vec::new(),
@@ -68,15 +72,32 @@ pub fn jsx_directive(
         collect_memo_errors(tree.root_node(), &code, &config.prefix, &mut errors);
     }
     let mut warnings = Vec::new();
-    let transformed = render_node(tree.root_node(), &code, &config, &mut warnings, false)?;
+    let mut top_edits = Vec::new();
+    let transformed =
+        render_node(tree.root_node(), &code, &config, &mut warnings, false, Some(&mut top_edits))?;
     let mut seen_warnings = HashSet::new();
     warnings.retain(|warning| {
         seen_warnings.insert((warning.start, warning.end, warning.message.clone()))
     });
+    let utf16_index = Utf16Index::build(&code);
+    let convert = |offset: usize| utf16_index.convert(offset);
+    for warning in warnings.iter_mut().chain(errors.iter_mut()) {
+        warning.start = convert(warning.start as usize);
+        warning.end = convert(warning.end as usize);
+    }
+    let source_edits = top_edits
+        .iter()
+        .map(|edit| SourceEdit {
+            start: convert(edit.start),
+            end: convert(edit.end),
+            replacement: edit.replacement.clone(),
+        })
+        .collect();
     Ok(TransformResult {
         code: transformed,
         warnings,
         errors,
+        edits: source_edits,
     })
 }
 

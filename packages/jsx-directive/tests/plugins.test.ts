@@ -54,7 +54,7 @@ test("使用 Vite 插件即启用 JSX 指令转换", () => {
     ),
   ).toEqual({
     code: "<div style={{[\"display\"]: (visible) ? (undefined) : ('none')}} />",
-    map: null,
+    map: expect.any(String),
   });
 });
 
@@ -67,7 +67,7 @@ test("Vite 插件接收转换配置", () => {
     ),
   ).toEqual({
     code: "<div style={{[\"display\"]: (visible) ? (undefined) : ('none')}} />",
-    map: null,
+    map: expect.any(String),
   });
 });
 
@@ -107,7 +107,7 @@ test("使用 Rsbuild 插件即注册 JSX 指令转换", () => {
     }),
   ).toEqual({
     code: "<div style={{[\"display\"]: (visible) ? (undefined) : ('none')}} />",
-    map: null,
+    map: expect.any(String),
   });
   // 不用 "pre"：Rsbuild 的多个 pre transform 按注册逆序执行，
   // default 档保证 reactivue（pre，消费 v-memo）恒先于本插件。
@@ -182,4 +182,28 @@ test("Rsbuild 插件对未变化代码返回原文并报告带行列的警告", 
   expect(warnings).toEqual([
     expect.stringMatching(/^component\.tsx:2:6: Orphaned v-else directive:/),
   ]);
+});
+
+test("有代码变化时输出 source map（UTF-16 偏移对齐）", () => {
+  const source = 'const label = "你好";\nconst A = () => <div v-show={visible} />;';
+  const hook = JsxDirectiveVite().transform;
+  if (!hook) throw new Error("缺少 transform hook");
+  const handler = typeof hook === "function" ? hook : hook.handler;
+  const result = Reflect.apply(handler, {}, [source, "A.tsx"]) as {
+    code: string;
+    map: string | null;
+  };
+  expect(result.code).toContain("display");
+  expect(result.map).toBeTruthy();
+  const map = JSON.parse(result.map ?? "{}") as {
+    version: number;
+    sources: string[];
+    sourcesContent: string[];
+    mappings: string;
+  };
+  expect(map.version).toBe(3);
+  expect(map.sources).toContain("A.tsx");
+  // 含中文的源码：偏移按 UTF-16 对齐，sourcesContent 必须是完整原码
+  expect(map.sourcesContent[0]).toBe(source);
+  expect(map.mappings.length).toBeGreaterThan(0);
 });

@@ -1453,8 +1453,8 @@ VueUse 15 兼容注记：`useNow` 已移除 `interval` 选项（改 `Configurabl
 
 **source map（reactivue 插件）**：native `TransformResult` 新增 `edits`（顶层编辑区间），TS 侧 `buildSourceMap` 用 magic-string 生成（区间粒度，含 sourcesContent），Vite/Rsbuild 插件透传；example 开启 `output.sourceMap` 后产物 `.map` 的 sources/sourcesContent 验证通过。**过程中发现并修复偏移语义缺陷：native 输出为 UTF-8 字节偏移，MagicString 使用 UTF-16 code unit 索引，含多字节字符（中文注释）的源码全部错位**——Rust 侧新增 `Utf16Index`，warnings/errors/edits 输出前统一转 UTF-16，并有含中文的专项 Rust 测试。
 
-`jsx-directive` 的 source map 未实现（其编辑收集嵌在递归 render_node 内，暴露顶层区间需架构级重构），列入 §18.11。
+`jsx-directive` 的 source map 已于同轮补齐：`render_node` 增加 `top_edits` 收集参数（仅 root 层聚合的「变化子树整区间 → 变换文本」进入收集，粒度与产物结构对应），entry 层复用 `Utf16Index` 转 UTF-16 输出；`warnings.ts` 的行列换算同步改为 UTF-16 语义（原按字节切 Buffer）。
 
 ### 18.11 仍未完成
 
-S1–S12 benchmark 与 `c_b/t_r` / `D_max` / `N_min` 三个常数拟合、根 README Packages 条目、HMR 状态保留、Rstest 换回 automatic JSX runtime（消除 outdated transform 警告）、hydration 实测（SSR 输出形态已有测试）、§17.4 风险的 S11 量化与 §6.6 完整 deps 方案、编译期 `fingerprint`、嵌套冗余块的聚合优化、compat 层 pinia 可行性评估、**`jsx-directive` 的 source map**、SSR 真 server 环境（isServer=true 路径）测试。
+S1–S12 benchmark 与 `c_b/t_r` / `D_max` / `N_min` 三个常数拟合、根 README Packages 条目、HMR 状态保留、Rstest 换回 automatic JSX runtime（消除 outdated transform 警告）、hydration 实测（SSR 输出形态已有测试）、§17.4 风险的 S11 量化与 §6.6 完整 deps 方案、编译期 `fingerprint`、嵌套冗余块的聚合优化、compat 层 pinia 可行性评估、SSR 真 server 环境（isServer=true 路径）测试。
