@@ -41,7 +41,7 @@ export interface BlockCell {
 interface Epoch {
   readonly id: number;
   texts: Set<TextCell>;
-  blocks: Map<string, BlockCell>;
+  blocks: Map<string, BlockCell[]>;
   aligned: Array<() => void>;
   waiting: Set<BlockCell>;
   settled: boolean;
@@ -80,7 +80,7 @@ function epoch(): Epoch {
     current = {
       id: ++epochSequence,
       texts: new Set<TextCell>(),
-      blocks: new Map<string, BlockCell>(),
+      blocks: new Map<string, BlockCell[]>(),
       aligned: [],
       waiting: new Set<BlockCell>(),
       settled: false,
@@ -105,7 +105,12 @@ export function scheduleBlock(cell: BlockCell): void {
   if (isServer) return;
   const target = epoch();
   const key = blockKey(cell);
-  if (!target.blocks.has(key)) target.blocks.set(key, cell);
+  // 同 key 收集为列表：coarse 下同 groupKey 的块必须全部保留——
+  // 「合并为一次 bump」指 React 批处理后的单次 commit，而不是只调度
+  // 组内第一个块（那会让其余块内容过期，S12 bench 曾暴露此缺陷）。
+  const cells = target.blocks.get(key);
+  if (cells) cells.push(cell);
+  else target.blocks.set(key, [cell]);
   scheduleFlush();
 }
 
@@ -165,7 +170,9 @@ function flush(): void {
   if (target === null || target.settled) return;
 
   const texts = [...target.texts].filter((cell) => cell.alive);
-  const blocks = [...target.blocks.values()].filter((cell) => cell.alive);
+  const blocks = [...target.blocks.values()]
+    .flat()
+    .filter((cell) => cell.alive);
 
   // 带 scheduler 时 Vue 不会自动 run()，必须显式重收集依赖。
   for (const cell of texts) safeCall(cell.runner);

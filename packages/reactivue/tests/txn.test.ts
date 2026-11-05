@@ -94,7 +94,7 @@ test("结构块卸载时 cancelBlock 避免文本写入饿死", async () => {
   expect(writes).toEqual(["v"]);
 });
 
-test("coarse 模式把同组结构块合并为一次 bump（P-B）", async () => {
+test("coarse 模式同组结构块全部 bump（React 批处理合并 commit；丢更新缺陷修复回归）", async () => {
   resetTxnForTest();
   configureTxn({ granularity: "coarse" });
   expect(getGranularity()).toBe("coarse");
@@ -102,7 +102,8 @@ test("coarse 模式把同组结构块合并为一次 bump（P-B）", async () =>
   scheduleBlock(makeBlock(bumps, "group-1"));
   scheduleBlock(makeBlock(bumps, "group-1"));
   await tick();
-  expect(bumps).toEqual(["bump"]);
+  // 同组每个 cell 都必须 bump，否则未调度到的块内容过期（S12 bench 曾暴露）
+  expect(bumps).toEqual(["bump", "bump"]);
 });
 
 test("fingerprint 未变化时跳过结构块 bump（P-B）", async () => {

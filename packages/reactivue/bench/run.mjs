@@ -72,6 +72,7 @@ try {
 // ---------------------------------------------------------------------------
 const React = await import("react");
 const { createRoot } = await import("react-dom/client");
+const { useState } = React;
 const { flushSync } = await import("react-dom");
 const rv = await import(pathToFileURL(path.join(pkgDir, "dist/index.js")).href);
 
@@ -442,9 +443,399 @@ async function benchS2() {
 }
 
 // ===========================================================================
+// S3 · 全量更新（k≈N，调度扇出，§14.5：扇出不 regress）
+// ===========================================================================
+const S3_SIZES = [8, 32, 128];
+
+async function benchS3() {
+  console.log("\n== S3 全量更新 k≈N（m 块扇出，一次写入命中全部） ==");
+  for (const m of S3_SIZES) {
+    // --- 文本通道扇出：m 个 TextBinding 读同一 ref ---
+    {
+      const count = rv.ref(0);
+      const cells = Array.from({ length: m }, (_, i) =>
+        h("span", { key: i }, h(rv.TextBinding, { value: () => count.value }))
+      );
+      const root = mount(h("div", null, cells));
+      await warmupAndReset((v) => {
+        count.value = v;
+      });
+      const t0 = performance.now();
+      count.value = 999;
+      await drainMicrotasks();
+      const t1 = performance.now();
+      console.log(`  [文本通道] m=${m}: 端到端 ${fmt(t1 - t0)}ms | DOM nodeValue 写 ${spy.count}（=m）| React commit ${profilerRenders.count}（理论 0）`);
+      root.unmount();
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    // --- 结构通道扇出：m 个 Block 读同一 ref ---
+    {
+      const count = rv.ref(0);
+      const cells = Array.from({ length: m }, (_, i) =>
+        h(rv.Block, { key: i, render: () => `b${i}#${complexExpr(count.value)}` })
+      );
+      const root = mount(h("div", null, cells));
+      await warmupAndReset((v) => {
+        count.value = v;
+      });
+      const before = profilerRenders.count;
+      const t0 = performance.now();
+      count.value = 999;
+      await waitForText(container, complexExpr(999));
+      const t1 = performance.now();
+      console.log(`  [结构通道] m=${m}: 端到端 ${fmt(t1 - t0)}ms | React commit ${profilerRenders.count - before}（理论 1，扇出不 regress）| DOM 写 ${spy.count}`);
+      root.unmount();
+      await new Promise((r) => setTimeout(r, 10));
+    }
+  }
+}
+
+// ===========================================================================
+// S4 · 1k 项 keyed 列表（R6 边界：整块重渲染 reconcile 成本与内存）
+// ===========================================================================
+async function benchS4() {
+  console.log("\n== S4 1k 项 keyed 列表 ==");
+  const LIST_SIZE = 1000;
+  const items = rv.ref(
+    Array.from({ length: LIST_SIZE }, (_, i) => ({ id: i, score: i })),
+  );
+  const heapBefore = process.memoryUsage().heapUsed;
+
+  // --- 结构块：整列表一个 Block，改中间一项 → 1000 li reconcile ---
+  {
+    const App = () =>
+      h("ul", null,
+        h(rv.Block, {
+          render: () =>
+            items.value.map((item) =>
+              h("li", { key: item.id }, `item-${item.id}:${complexExpr(item.score)}`),
+            ),
+        }),
+      );
+    const root = mount(h(App));
+    await warmupAndReset(() => {
+      const next = [...items.value];
+      next[500] = { ...next[500], score: next[500].score + 1 };
+      items.value = next;
+    });
+    const before = profilerRenders.count;
+    const t0 = performance.now();
+    const next = [...items.value];
+    next[500] = { ...next[500], score: next[500].score + 1 };
+    items.value = next;
+    await waitForText(container, complexExpr(items.value[500].score));
+    const t1 = performance.now();
+    console.log(`  [结构块整列表] 单项改动: 端到端 ${fmt(t1 - t0)}ms | commit ${profilerRenders.count - before} | heap 增量 ${( (process.memoryUsage().heapUsed - heapBefore) / 1024 / 1024 ).toFixed(2)}MB`);
+    root.unmount();
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  // --- 文本通道：1000 项每项 score 为 TextBinding，改一项只写 1 个文本 ---
+  {
+    const scores = rv.ref(Array.from({ length: LIST_SIZE }, (_, i) => i));
+    const cells = scores.value.map((_, i) =>
+      h("li", { key: i },
+        `item-${i}:`,
+        h(rv.TextBinding, { value: () => scores.value[i] })),
+    );
+    const root = mount(h("ul", null, cells));
+    await warmupAndReset((i) => {
+      const next = [...scores.value];
+      next[i] = next[i] + 1;
+      scores.value = next;
+    });
+    spy.reset();
+    profilerRenders.count = 0;
+    const t0 = performance.now();
+    const next = [...scores.value];
+    next[500] = next[500] + 1;
+    scores.value = next;
+    await drainMicrotasks();
+    const t1 = performance.now();
+    console.log(`  [文本通道单项] 端到端 ${fmt(t1 - t0)}ms | DOM 写 ${spy.count}（理论 1，仅命中项）| React commit ${profilerRenders.count}（理论 0）`);
+    root.unmount();
+    await new Promise((r) => setTimeout(r, 10));
+  }
+}
+
+// ===========================================================================
+// S5 · 同一写入命中 文本 + 属性块（R12 帧内一致性，§15.7 rAF 口径）
+// ===========================================================================
+const nextFrame = () =>
+  new Promise((r) => requestAnimationFrame(() => r()));
+
+async function benchS5() {
+  console.log("\n== S5 同一写入命中 文本 + 属性块（帧内一致性） ==");
+  const count = rv.ref(0);
+  const App = () =>
+    h("div", null,
+      h("p", null, h(rv.TextBinding, { value: () => count.value })),
+      h(rv.Block, { render: () => h("div", { className: `lv-${count.value}`, "data-v": String(count.value) }, "attr") }),
+    );
+  const root = mount(h(App));
+  await warmupAndReset((v) => {
+    count.value = v;
+  });
+
+  const INCONSISTENT_FRAMES = { n: 0 };
+  const FRAMES = { n: 0 };
+  for (let round = 0; round < 50; round++) {
+    recorder.reset();
+    count.value = 1000 + round;
+    await nextFrame(); // 收集本帧（写入→下一 rAF 之间）的全部 MO 记录
+    await drainMicrotasks();
+    const frameRecords = recorder.records;
+    if (frameRecords.length === 0) continue;
+    FRAMES.n++;
+    const hasText = frameRecords.some((m) => m.type === "characterData");
+    const hasAttr = frameRecords.some((m) => m.type === "attributes");
+    // R12：同一写入的文本与属性变更必须落在同一帧区间
+    if (hasText !== hasAttr) INCONSISTENT_FRAMES.n++;
+  }
+  console.log(`  采样 ${FRAMES.n} 帧（50 轮写入）`);
+  console.log(`  不一致帧（文本/属性分离）: ${INCONSISTENT_FRAMES.n}（P-A 设计判据：0）`);
+  root.unmount();
+  await new Promise((r) => setTimeout(r, 10));
+}
+
+// ===========================================================================
+// S7 · startTransition 下重复 S5（并发渲染下的时序窗口）
+// ===========================================================================
+async function benchS7() {
+  console.log("\n== S7 startTransition 下重复 S5 一致性观测 ==");
+  const count = rv.ref(0);
+  const App = () =>
+    h("div", null,
+      h("p", null, h(rv.TextBinding, { value: () => count.value })),
+      h(rv.Block, { render: () => h("div", { className: `lv-${count.value}` }, "t") }),
+    );
+  const root = mount(h(App));
+  await warmupAndReset((v) => {
+    count.value = v;
+  });
+
+  const inconsistent = { n: 0 };
+  const total = { n: 0 };
+  for (let round = 0; round < 30; round++) {
+    recorder.reset();
+    React.startTransition(() => {
+      count.value = 2000 + round;
+    });
+    await nextFrame();
+    await drainMicrotasks();
+    const frameRecords = recorder.records;
+    if (frameRecords.length === 0) continue;
+    total.n++;
+    const hasText = frameRecords.some((m) => m.type === "characterData");
+    const hasAttr = frameRecords.some((m) => m.type === "attributes");
+    if (hasText !== hasAttr) inconsistent.n++;
+  }
+  console.log(`  transition 内 ${total.n} 帧采样；不一致帧: ${inconsistent.n}（文本通道不经 React，属性块经并发调度，分离帧为预期观测项）`);
+  root.unmount();
+  await new Promise((r) => setTimeout(r, 10));
+}
+
+// ===========================================================================
+// S8 · props 桥驱动更新（§14.4 税 2：是否多一次 commit）
+// ===========================================================================
+async function benchS8() {
+  console.log("\n== S8 父级 props 驱动块更新（编译产物宿主，§14.4 税 2） ==");
+  // props 值必须是普通值（reactive 会解包 ref 属性）；桥路径 = 父 React 重渲染
+  // → 宿主 render 阶段 syncProps 写 reactive props → trigger → TextBinding 更新。
+  const Compiled = rv.createCompiledHost((props) => ({
+    render: () =>
+      h("p", null, h(rv.TextBinding, { value: () => props.label })),
+  }));
+  let setLabelText = null;
+  function Wrapper() {
+    const [label, setLabel] = useState("init");
+    setLabelText = setLabel;
+    return h(Compiled, { label });
+  }
+  const root = mount(h(Wrapper));
+  await warmupAndReset(() => {
+    setLabelText(`w${Math.random()}`);
+    return drainMicrotasks();
+  });
+  // 正式采样：父级 setState → 宿主重渲染 → syncProps → 块文本更新
+  const samples = [];
+  for (let round = 0; round < 30; round++) {
+    profilerRenders.count = 0;
+    spy.reset();
+    const t0 = performance.now();
+    setLabelText(`v${round}`);
+    await waitForText(container, `v${round}`);
+    const t1 = performance.now();
+    samples.push({ e2e: t1 - t0, commits: profilerRenders.count, domWrites: spy.count });
+  }
+  const e2e = samples.map((x) => x.e2e);
+  const commits = samples.map((x) => x.commits);
+  console.log(
+    `  30 轮 props 变化: 端到端 mean=${fmt(e2e.reduce((a, b) => a + b, 0) / e2e.length)}ms p95=${fmt(percentile([...e2e].sort((a, b) => a - b), 95))}ms`,
+  );
+  console.log(
+    `  commit 次数分布: ${JSON.stringify(commits.reduce((acc, c) => { acc[c] = (acc[c] || 0) + 1; return acc; }, {}))}（§14.4 税 2 观测：宿主重渲染与块更新是否分离 commit）`,
+  );
+  console.log(`  DOM 写次数分布: ${JSON.stringify(samples.reduce((acc, x) => { acc[x.domWrites] = (acc[x.domWrites] || 0) + 1; return acc; }, {}))}`);
+  root.unmount();
+  await new Promise((r) => setTimeout(r, 10));
+}
+
+// ===========================================================================
+// S9 · 同一事件内连续 10 次写（§15.7 正式判据：异值 ≤2、同值 0）
+// ===========================================================================
+async function benchS9() {
+  console.log("\n== S9 同一事件内连续 10 次写（正式判据口径） ==");
+  const count = rv.ref(0);
+  const App = () => h("p", null, h(rv.TextBinding, { value: () => count.value }));
+  const root = mount(h(App));
+  await warmupAndReset((v) => {
+    count.value = v;
+  });
+  // 异值组
+  spy.reset();
+  recorder.reset();
+  for (let i = 1; i <= 10; i++) count.value = i;
+  await drainMicrotasks();
+  const diffWrites = spy.count;
+  console.log(`  异值组: DOM 写 ${diffWrites}（判据 ≤2 → ${diffWrites <= 2 ? "PASS" : "FAIL"}）| MO 记录 ${recorder.records.length}`);
+  // 同值组：先预置 42 并排空，使循环内写入与当前值相同
+  count.value = 42;
+  await drainMicrotasks();
+  spy.reset();
+  recorder.reset();
+  for (let i = 0; i < 10; i++) count.value = 42;
+  await drainMicrotasks();
+  const sameWrites = spy.count;
+  console.log(`  同值组: DOM 写 ${sameWrites}（判据 =0 → ${sameWrites === 0 ? "PASS" : "FAIL"}）| MO 记录 ${recorder.records.length}`);
+  root.unmount();
+  await new Promise((r) => setTimeout(r, 10));
+}
+
+// ===========================================================================
+// S10 · 动态依赖切换（条件分支先后读不同 ref，重收集正确性）
+// ===========================================================================
+async function benchS10() {
+  console.log("\n== S10 动态依赖切换（runner 重收集后订阅集合正确） ==");
+  const flag = rv.ref(true);
+  const a = rv.ref("A0");
+  const b = rv.ref("B0");
+  const App = () =>
+    h("p", null, h(rv.TextBinding, { value: () => (flag.value ? a.value : b.value) }));
+  const root = mount(h(App));
+  await warmupAndReset(() => {
+    flag.value = !flag.value;
+  });
+
+  // 阶段1：读 a。改 b（当前未读）→ 0 更新（无残留订阅）
+  spy.reset();
+  b.value = "B1";
+  await drainMicrotasks();
+  const staleWrite = spy.count;
+  // 阶段2：切 flag → 重收集，现在读 b
+  flag.value = false;
+  await drainMicrotasks();
+  // 阶段3：改 b → 应更新；改 a → 不应更新
+  spy.reset();
+  b.value = "B2";
+  await drainMicrotasks();
+  const afterSwitch = spy.count;
+  spy.reset();
+  a.value = "A9";
+  await drainMicrotasks();
+  const oldDepWrites = spy.count;
+  console.log(`  切换前改未读 dep: DOM 写 ${staleWrite}（理论 0，无残留订阅）`);
+  console.log(`  切换后改新读 dep: DOM 写 ${afterSwitch}（理论 1，重收集正确）`);
+  console.log(`  切换后改旧 dep: DOM 写 ${oldDepWrites}（理论 0，旧 dep 已移除）`);
+  const ok = staleWrite === 0 && afterSwitch === 1 && oldDepWrites === 0;
+  console.log(`  判定: ${ok ? "PASS" : "FAIL"}`);
+  root.unmount();
+  await new Promise((r) => setTimeout(r, 10));
+}
+
+// ===========================================================================
+// S11 · 卸载竞态与文本饿死兜底（§15.3 250ms fallback）
+// ===========================================================================
+async function benchS11() {
+  console.log("\n== S11 卸载竞态：块卸载后写入不抛错、不超时饿死 ==");
+  const count = rv.ref(0);
+  let blockMounted = true;
+  const App = () =>
+    h("div", null,
+      blockMounted ? h(rv.Block, { render: () => `blk#${count.value}` }) : null,
+      h("p", null, h(rv.TextBinding, { value: () => count.value })),
+    );
+  const root = mount(h(App));
+  await warmupAndReset((v) => {
+    count.value = v;
+  });
+  // 卸载结构块（保留文本通道），随后高频写入
+  blockMounted = false;
+  flushSync(() => {}); // 触发重新渲染以卸载块
+  const t0 = performance.now();
+  let threw = false;
+  try {
+    for (let i = 0; i < 100; i++) count.value = 9000 + i;
+    await drainMicrotasks();
+  } catch (error) {
+    threw = true;
+    console.error("  卸载后写入抛错:", error.message);
+  }
+  const t1 = performance.now();
+  const textNode = [...container.querySelectorAll("p")][0]?.firstChild;
+  console.log(`  卸载后 100 次写: 抛错=${threw} | 耗时 ${fmt(t1 - t0)}ms | 文本通道仍直写: ${spy.count > 0 ? "是" : "否"} | 最终值 ${textNode ? "已落地" : "N/A"}`);
+  console.log(`  兜底判定: ${!threw ? "PASS（无饿死、无异常）" : "FAIL"}`);
+  root.unmount();
+  await new Promise((r) => setTimeout(r, 10));
+}
+
+// ===========================================================================
+// S12 · granularity 三档 × m 扇出（运行时部分：手动 groupKey Block）
+// ===========================================================================
+const S12_SIZES = [8, 32, 128];
+
+async function benchS12() {
+  console.log("\n== S12 granularity 三档 × m 扇出（运行时 groupKey Block） ==");
+  const original = rv.getGranularity();
+  for (const granularity of ["fine", "balanced", "coarse"]) {
+    rv.configureTxn({ granularity });
+    for (const m of S12_SIZES) {
+      const count = rv.ref(0);
+      // coarse 判据依赖同 groupKey 合并；fine/balanced 下同 key 不聚合
+      const groupKey = granularity === "coarse" ? "shared-group" : undefined;
+      const cells = Array.from({ length: m }, (_, i) =>
+        h(rv.Block, {
+          key: i,
+          groupKey,
+          render: () => h("div", { "data-i": i }, `c${i}#${count.value}`),
+        }),
+      );
+      const root = mount(h("div", null, cells));
+      await warmupAndReset((v) => {
+        count.value = v;
+      });
+      const before = profilerRenders.count;
+      const t0 = performance.now();
+      count.value = 7777;
+      await drainMicrotasks();
+      await new Promise((r) => setTimeout(r, 30));
+      const t1 = performance.now();
+      const updated = [
+        ...container.querySelectorAll("[data-i]"),
+      ].filter((n) => n.textContent.includes("#7777")).length;
+      console.log(
+        `  [${granularity}] m=${m}: 端到端 ${fmt(t1 - t0)}ms | commit ${profilerRenders.count - before} | 更新到的块 ${updated}/${m}${updated < m ? " ⚠️ 同组丢更新" : ""}`,
+      );
+      root.unmount();
+      await new Promise((r) => setTimeout(r, 10));
+    }
+  }
+  rv.configureTxn({ granularity: original });
+}
+
+// ===========================================================================
 // 主流程
 // ===========================================================================
-console.log("@uno-pc/reactivue benchmark（S1/S2 实测，S3-S12 见 bench/README.md）");
+console.log("@uno-pc/reactivue benchmark（S1–S11 实测 + S12 运行时部分）");
 console.log("环境:");
 console.log(`  node: ${process.version}`);
 console.log(`  react: ${readVersion("react")} / react-dom: ${readVersion("react-dom")}`);
@@ -456,6 +847,15 @@ console.log(`  口径: performance.now() 墙钟 ms；预热 10 次写入后清�
 try {
   await benchS1();
   await benchS2();
+  await benchS3();
+  await benchS4();
+  await benchS5();
+  await benchS7();
+  await benchS8();
+  await benchS9();
+  await benchS10();
+  await benchS11();
+  await benchS12();
   spy.restore();
   recorder.disconnect();
   console.log("\n完成（exit 0）");

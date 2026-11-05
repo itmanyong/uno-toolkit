@@ -1466,6 +1466,12 @@ VueUse 15 兼容注记：`useNow` 已移除 `interval` 选项（改 `Configurabl
 - S2 结构 vs 文本：1000 次写 → Block commit **1 次**（React Profiler 口径）、DOM 写 1 次；单写 100 轮端到端 p95 0.2538 ms；原生 React useState 基线同口径对照。Block 每次 commit 3 次 render 闭包（txn 重收集 / fiber render / layout effect 重建）为结构性成本，已记录构成。
 - S3–S12 以 TODO 清单列入 bench/README.md。数据仅管线验证口径，不参与 §14.6/§15.7 准入判定，不做倍数宣称。
 
+### 18.13 S3–S12 场景落地与 coarse 丢更新缺陷修复（2026-11-05，同日第六轮）
+
+`bench/run.mjs` 扩展至 S1–S11 全场景 + S12 运行时部分（三档 granularity × m∈{8,32,128} 扇出）。**S12 首轮运行即暴露 coarse 模式的丢更新缺陷**：同 groupKey 的结构块在 txn flush 去重时仅保留第一个 cell，其余块不重收集、不 bump、内容过期——「合并为一次 bump」被实现成了「只调度组内第一个」。修复：`blocks` 改为同 key 收集全部 cells，flush 扁平化处理；「合并」语义由 React 批处理达成（S3 实测 m=128 扇出 commit 恒 1）。既有 txn 测试断言 `["bump"]` 正是该缺陷的固化，已更新为 `["bump", "bump"]` 并注明缘由。
+
+其余场景结果（jsdom + dist 管线口径，详见 bench/results）：S3 扇出 commit 恒 1；S4 文本通道单项改动 1.14 ms / 0 commit vs 结构块整列表 9.05 ms；S5/S7 帧内分离帧 0（R12）；S8 props 桥 30 轮全部 1 commit（税 2 未观测到分离）；S9 双组 PASS；S10 重收集 PASS；S11 卸载竞态 PASS。S6 hydration 耗时与 S11 restart 计数需浏览器口径，S12 常数拟合需编译产物对比，仍列 §18.11。
+
 ### 18.11 仍未完成
 
 S1–S12 benchmark 与 `c_b/t_r` / `D_max` / `N_min` 三个常数拟合、根 README Packages 条目、HMR 状态保留、Rstest 换回 automatic JSX runtime（消除 outdated transform 警告）、hydration 实测（SSR 输出形态已有测试）、§17.4 风险的 S11 量化与 §6.6 完整 deps 方案、编译期 `fingerprint`、嵌套冗余块的聚合优化、compat 层 pinia 可行性评估、SSR 真 server 环境（isServer=true 路径）测试。

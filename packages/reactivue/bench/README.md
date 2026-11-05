@@ -28,16 +28,16 @@ node bench/run.mjs   # exit 0，输出原始数据
 | --- | --- | --- | --- | --- |
 | S1 | 单文本高频写入（1k 次/秒） | 文本同步路径、批量去重（§14.4 税 3 / §15.3） | **已实现**（run.mjs Round A/B/C） | jsdom + dist |
 | S2 | 大组件仅 1 个动态文本；结构 vs 文本 | React commit 次数、端到端延迟 | **已实现**（Block + useState 基线对照） | jsdom + dist |
-| S3 | 全量更新（k≈N） | 调度扇出是否 regress（§14.5）；`C_rv / C_react` | TODO 骨架 | jsdom + dist；需构造 m 块扇出组件 |
-| S4 | 1k 项 keyed 列表 | R6 边界、内存、fiber 数 | TODO 骨架 | jsdom（内存/fiber 数）或浏览器 heap snapshot |
-| S5 | 同一次写入命中 文本 + 属性块 | tearing / 帧内一致性（R12，§15.7 rAF 口径） | TODO 骨架 | jsdom + dist；需 rAF 区间比对 |
-| S6 | SSR 输出 + hydration | 锚点字节、hydration 耗时、首屏值一致 | TODO 骨架 | Node `renderToString` + jsdom hydration |
-| S7 | startTransition / Suspense 下重复 S5 | 并发渲染下的时序窗口 | TODO 骨架 | jsdom 可跑；判定数据建议浏览器 |
-| S8 | 父级传入新 props 驱动更新 | props 桥（§14.4 税 2）是否多一次 commit | TODO 骨架 | jsdom + dist |
-| S9 | 同一事件内连续 10 次写，同值 / 异值两组 | DOM 写次数与 MutationObserver 记录数（判据：异值 ≤2、同值 0，§15.7） | **部分覆盖**（S1 Round A/B 为 N=1000 版本；正式实现需按 S9 判据口径记录） | jsdom + dist |
-| S10 | 动态依赖切换（条件分支先后读不同 ref） | runner() 重收集后订阅集合正确、旧 dep 残留 | TODO 骨架 | jsdom + dist |
-| S11 | startTransition 下结构块被丢弃 / 卸载 | React restart 次数、blocking 降级、最坏延迟帧、文本是否饿死（§15.3 兜底） | TODO 骨架 | jsdom 可跑；restart 计数需浏览器 DevTools 口径或 React 内部探针 |
-| S12 | k≈N 下切换 granularity 三档 | `C_rv / C_react` 曲线，拟合 `c_b / t_r`、`D_max`、`N_min` | TODO 骨架 | **需编译产物对比**：插件 + example 构建产物（fine / balanced / coarse 三份） |
+| S3 | 全量更新（k≈N） | 调度扇出是否 regress（§14.5）；`C_rv / C_react` | **已实现**（commit 恒 1，扇出不 regress） | jsdom + dist |
+| S4 | 1k 项 keyed 列表 | R6 边界、内存、fiber 数 | **已实现**（heap 为 jsdom 参考值；fiber 数需浏览器） | jsdom + dist |
+| S5 | 同一次写入命中 文本 + 属性块 | tearing / 帧内一致性（R12，§15.7 rAF 口径） | **已实现**（分离帧 0） | jsdom + dist（rAF 由 pretendToBeVisual 提供） |
+| S6 | SSR 输出 + hydration | 锚点字节、hydration 耗时、首屏值一致 | 骨架（输出形态已由 tests/ssr.test.tsx 覆盖；hydration 耗时待浏览器口径） | Node + jsdom |
+| S7 | startTransition / Suspense 下重复 S5 | 并发渲染下的时序窗口 | **已实现**（分离帧 0；Suspense 变体待补） | jsdom 可跑 |
+| S8 | 父级传入新 props 驱动更新 | props 桥（§14.4 税 2）是否多一次 commit | **已实现**（30 轮全部 1 commit，未观测到分离） | jsdom + dist |
+| S9 | 同一事件内连续 10 次写，同值 / 异值两组 | DOM 写次数与 MutationObserver 记录数（判据：异值 ≤2、同值 0，§15.7） | **已实现**（双组 PASS） | jsdom + dist |
+| S10 | 动态依赖切换（条件分支先后读不同 ref） | runner() 重收集后订阅集合正确、旧 dep 残留 | **已实现**（PASS） | jsdom + dist |
+| S11 | startTransition 下结构块被丢弃 / 卸载 | React restart 次数、blocking 降级、最坏延迟帧、文本是否饿死（§15.3 兜底） | **部分实现**（卸载竞态 PASS；restart 计数需浏览器口径） | jsdom 可跑 |
+| S12 | k≈N 下切换 granularity 三档 | `C_rv / C_react` 曲线，拟合 `c_b / t_r`、`D_max`、`N_min` | **运行时部分已实现**（三档 × m 全部 m/m 更新、commit 1；编译产物对比与常数拟合待做） | jsdom + dist（拟合需编译产物） |
 
 ## S3–S12 实施注意事项
 
@@ -45,3 +45,4 @@ node bench/run.mjs   # exit 0，输出原始数据
 - S3 / S12 拟合 `c_b / t_r` 时需扫 `m`（块数）与 `k`（命中块数）两个维度，避免单点拟合。
 - S12 的三档 granularity 依赖编译期产物差异，run.mjs（纯运行时）无法覆盖，需在 examples/reactivue-all 或独立 fixture 构建后对比。
 - 判定数据必须在生产构建 + 关闭 StrictMode 下取数；开发态数据单独记录。
+- **2026-11-05：S12 首轮运行暴露 coarse 丢更新缺陷**（同 groupKey 块在 flush 去重时仅保留第一个 cell），已修复并更新回归测试；修复后三档全部 m/m 更新、commit 1 次。
