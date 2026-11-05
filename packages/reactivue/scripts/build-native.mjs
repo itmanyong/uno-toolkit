@@ -45,17 +45,19 @@ if (cross) {
   if (rustup.status !== 0) process.exit(rustup.status ?? 1);
 }
 
-const args = ["build", "--release"];
-if (cross) args.push("--target", cfg.cargo);
-
 // musl 目标默认 crt-static（静态 libc），而 cdylib 需要动态 libc，
-// 必须显式关闭 crt-static 才能构建 .so（napi-rs 官方做法）
+// 必须显式关闭 crt-static 才能构建 .so（napi-rs 官方做法）；
+// 且 musl 目标用 cargo-zigbuild 链接：musl-gcc 链接 cdylib 会因缺少
+// libgcc_s.so.1 失败，且 zig cc 能编译依赖中的 C 代码
 const env = { ...process.env };
 if (cfg.cargo.includes("musl")) {
   env.RUSTFLAGS = [env.RUSTFLAGS, "-C", "target-feature=-crt-static"]
     .filter(Boolean)
     .join(" ");
 }
+
+const args = [cfg.cargo.includes("musl") ? "zigbuild" : "build", "--release"];
+if (cross) args.push("--target", cfg.cargo);
 
 const cargo = spawnSync("cargo", args, {
   cwd: rustRoot,

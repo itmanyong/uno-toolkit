@@ -80,20 +80,23 @@ jobs:
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      # musl 交叉编译需要 musl-gcc 链接器
-      - name: Install musl tools
+      # musl 交叉编译使用 zig（cargo-zigbuild）：musl-gcc 链接 cdylib 会因缺少
+      # libgcc_s.so.1 失败，zig 作为 linker + C 编译器是 napi-rs 官方推荐方案
+      - name: Setup Zig
         if: contains(matrix.targets, 'musl')
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
+        uses: mlugg/setup-zig@v1
+
+      - name: Install cargo-zigbuild
+        if: contains(matrix.targets, 'musl')
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-zigbuild
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build native binaries
         shell: bash
-        env:
-          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
-          # 依赖中 C 代码由 cc-rs 编译，需将 musl 目标的 C 编译器指向 musl-gcc
-          CC_x86_64_unknown_linux_musl: musl-gcc
         run: |
           set -euo pipefail
           for pkg in jsx-directive reactivue signals-transform style-layer; do

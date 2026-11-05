@@ -61,9 +61,12 @@ if (isMusl) {
     .join(" ");
 }
 
+// musl 目标用 cargo-zigbuild 链接：musl-gcc 链接 cdylib 会因缺少
+// libgcc_s.so.1 失败，且 zig cc 能编译依赖中的 C 代码
+const buildSubcommand = isMusl ? "zigbuild" : "build";
 const cargo = spawnSync(
   "cargo",
-  ["build", "--release", "--target", cfg.cargo],
+  [buildSubcommand, "--release", "--target", cfg.cargo],
   { cwd: rustRoot, stdio: "inherit", env },
 );
 if (cargo.error) throw cargo.error;
