@@ -51,10 +51,20 @@ if (!cfg) {
 // 安装对应的 cargo target（已安装则忽略报错）
 spawnSync("rustup", ["target", "add", cfg.cargo], { stdio: "ignore" });
 
+// musl 目标默认 crt-static（静态 libc），而 cdylib 需要动态 libc，
+// 必须显式关闭 crt-static 才能构建 .so（napi-rs 官方做法）
+const isMusl = cfg.cargo.includes("musl");
+const env = { ...process.env };
+if (isMusl) {
+  env.RUSTFLAGS = [env.RUSTFLAGS, "-C", "target-feature=-crt-static"]
+    .filter(Boolean)
+    .join(" ");
+}
+
 const cargo = spawnSync(
   "cargo",
   ["build", "--release", "--target", cfg.cargo],
-  { cwd: rustRoot, stdio: "inherit" },
+  { cwd: rustRoot, stdio: "inherit", env },
 );
 if (cargo.error) throw cargo.error;
 if (cargo.status !== 0) process.exit(cargo.status ?? 1);

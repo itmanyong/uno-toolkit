@@ -92,9 +92,11 @@ jobs:
         shell: bash
         env:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+          # 依赖中 C 代码由 cc-rs 编译，需将 musl 目标的 C 编译器指向 musl-gcc
+          CC_x86_64_unknown_linux_musl: musl-gcc
         run: |
           set -euo pipefail
-          for pkg in jsx-directive signals-transform style-layer; do
+          for pkg in jsx-directive reactivue signals-transform style-layer; do
             for t in ${{ matrix.targets }}; do
               echo "::group::build $pkg @ $t"
               TARGET_TRIPLE="$t" node "packages/$pkg/scripts/build-native.mjs"
@@ -157,7 +159,7 @@ jobs:
         run: pnpm changeset version
 
       - name: Build JS packages
-        run: pnpm --filter "@uno-pc/jsx-directive" --filter "@uno-pc/style-layer" --filter "@uno-pc/signals-transform" run build:js
+        run: pnpm --filter "@uno-pc/jsx-directive" --filter "@uno-pc/reactivue" --filter "@uno-pc/style-layer" --filter "@uno-pc/signals-transform" run build:js
 
       - name: Setup npm auth
         run: npm config set //registry.npmjs.org/:_authToken "${NPM_TOKEN}"
