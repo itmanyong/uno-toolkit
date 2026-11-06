@@ -22,7 +22,6 @@ export const transformDirectives = (
     showProperty: options.show?.property,
     showTrueValue: options.show?.whenTrue,
     showFalseValue: options.show?.whenFalse,
-    memo: options.memo,
   };
   const result = native.transform(code, filename, nativeOptions);
   // 无阻断错误时不暴露 errors 字段，保持既有返回结构稳定（errors 为可选）。

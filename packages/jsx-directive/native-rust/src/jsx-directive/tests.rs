@@ -26,54 +26,10 @@ use tree_sitter::Parser;
     }
 
     #[test]
-    fn 残留v_memo默认产出编译期错误() {
-        let code = "const A = () => <p v-memo={[x]}>hi</p>;";
-        let result = transform_source(code);
-        assert_eq!(result.errors.len(), 1);
-        assert!(result.errors[0].message.contains("@uno-pc/reactivue"));
-        // 语法层不擅自改写：属性原样保留，由插件 throw 阻断。
-        assert!(result.code.contains("v-memo"));
-    }
-
-    #[test]
-    fn memo_preserve关闭报错且保留属性() {
-        let code = "const A = () => <p v-memo={[x]}>hi</p>;";
-        let result = transform_with(
-            code,
-            TransformOptions {
-                memo: Some("preserve".into()),
-                ..TransformOptions::default()
-            },
-        );
-        assert!(result.errors.is_empty());
-        assert!(result.code.contains("v-memo"));
-    }
-
-    #[test]
     fn 无v_memo的常规指令不产生错误() {
         let result = transform_source("const A = () => <p v-if={ok}>hi</p>;");
         assert!(result.errors.is_empty());
         assert!(result.warnings.is_empty());
-    }
-
-    #[test]
-    fn 自定义前缀的memo同样报错() {
-        let code = "const A = () => <p x-memo={[x]}>hi</p>;";
-        let result = transform_with(
-            code,
-            TransformOptions {
-                prefix: Some("x-".into()),
-                ..TransformOptions::default()
-            },
-        );
-        assert_eq!(result.errors.len(), 1);
-    }
-
-    #[test]
-    fn 嵌套v_memo逐个报错() {
-        let code = "const A = () => <div v-memo={[a]}><p v-memo={[b]}>hi</p></div>;";
-        let result = transform_source(code);
-        assert_eq!(result.errors.len(), 2);
     }
 
     #[test]

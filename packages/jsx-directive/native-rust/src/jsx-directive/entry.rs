@@ -3,7 +3,6 @@ use napi::bindgen_prelude::*;
 use std::collections::HashSet;
 use tree_sitter::Parser;
 
-use crate::jsx_directive::directives::v_memo::collect_memo_errors;
 use crate::jsx_directive::parser::TSX_PARSER;
 use crate::jsx_directive::render::render_node;
 use crate::jsx_directive::types::SourceEdit;
@@ -68,9 +67,6 @@ pub fn jsx_directive(
     }
 
     let mut errors = Vec::new();
-    if config.memo == "error" {
-        collect_memo_errors(tree.root_node(), &code, &config.prefix, &mut errors);
-    }
     let mut warnings = Vec::new();
     let mut top_edits = Vec::new();
     let transformed =
@@ -100,4 +96,3 @@ pub fn jsx_directive(
         edits: source_edits,
     })
 }
-

@@ -13,8 +13,6 @@ export interface JsxDirectiveAttributes {
   "v-bind"?: object;
   [attribute: `v-bind:${string}`]: unknown;
   "v-bind:name"?: unknown;
-  /** R-A：语法外壳归本包，语义降低由 @uno-pc/reactivue 插件完成。 */
-  "v-memo"?: unknown[];
   "v-model"?: unknown;
   [attribute: `v-model:${string}`]: unknown;
   "v-model:name"?: unknown;
@@ -25,8 +23,6 @@ export interface DirectiveTransformOptions {
   prefix?: string;
   formats?: string[];
   ifFallback?: string;
-  /** 残留 v-memo 的处理：error（默认，阻断）| preserve（交给下游工具链）。 */
-  memo?: "error" | "preserve";
   show?: {
     property?: string;
     whenTrue?: string;
@@ -43,5 +39,4 @@ export interface NativeDirectiveTransformOptions {
   showProperty?: string;
   showTrueValue?: string;
   showFalseValue?: string;
-  memo?: string;
 }

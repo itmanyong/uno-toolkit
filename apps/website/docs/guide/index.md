@@ -1,15 +1,14 @@
 # 开始使用
 
-Uno Toolkit 提供三个在**构建期**改写代码的插件，以及一个「编译期转换 + 运行时」组合包 `@uno-pc/reactivue`。转换结果进入构建产物，业务源码保持简洁；除了 `@uno-pc/signals-transform` 需要应用自带 `@preact/signals-react` 运行时、`@uno-pc/reactivue` 自带运行时外，其余两个插件不向应用引入运行时依赖。
+Uno Toolkit 提供三个在**构建期**改写代码的插件。转换结果进入构建产物，业务源码保持简洁；除了 `@uno-pc/signals-transform` 需要应用自带 `@preact/signals-react` 运行时外，其余两个插件不向应用引入运行时依赖。
 
 ## 插件一览
 
-| 插件包 | 作用 | 适用场景 | 使用文档 |
-| --- | --- | --- | --- |
-| `@uno-pc/jsx-directive` | 把 JSX 指令转换为条件表达式与样式属性 | React 项目中希望用指令写法表达条件渲染与显示控制 | [/plugins/jsx-directive](/plugins/jsx-directive) |
-| `@uno-pc/style-layer` | 把 CSS 放入指定 `@layer`，并为 `@import` 注入 layer | 需要在构建期确定第三方样式与应用样式的层叠顺序 | [/plugins/style-layer](/plugins/style-layer) |
-| `@uno-pc/signals-transform` | 自动注入 `useSignals` 并用 `try/finally` 收尾跟踪 | 使用 Preact Signals React，希望省去手写跟踪样板代码 | [/plugins/signals-transform](/plugins/signals-transform) |
-| `@uno-pc/reactivue` | 编译期把 `defineComponent` 的 JSX 切成常驻订阅块，运行时提供 Vue 3 composition API | 在 React 19 上用 `ref` / `computed` / VueUse 组合式函数做细粒度更新 | [/plugins/reactivue](/plugins/reactivue) |
+| 插件包                      | 作用                                                | 适用场景                                            | 使用文档                                                 |
+| --------------------------- | --------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------- |
+| `@uno-pc/jsx-directive`     | 把 JSX 指令转换为条件表达式与样式属性               | React 项目中希望用指令写法表达条件渲染与显示控制    | [/plugins/jsx-directive](/plugins/jsx-directive)         |
+| `@uno-pc/style-layer`       | 把 CSS 放入指定 `@layer`，并为 `@import` 注入 layer | 需要在构建期确定第三方样式与应用样式的层叠顺序      | [/plugins/style-layer](/plugins/style-layer)             |
+| `@uno-pc/signals-transform` | 自动注入 `useSignals` 并用 `try/finally` 收尾跟踪   | 使用 Preact Signals React，希望省去手写跟踪样板代码 | [/plugins/signals-transform](/plugins/signals-transform) |
 
 每个插件同时提供 Vite 与 Rsbuild 两种入口，通过包名的 `/vite` 与 `/rsbuild` 子路径导入。
 
@@ -22,7 +21,7 @@ Uno Toolkit 提供三个在**构建期**改写代码的插件，以及一个「�
 
 ## 安装与启用
 
-三个构建期插件都作为开发依赖安装，**注册插件即启用转换**，配置对象可以省略（`@uno-pc/reactivue` 作为运行时依赖安装，注册方式相同）。以 `@uno-pc/jsx-directive` 为例：
+三个构建期插件都作为开发依赖安装，**注册插件即启用转换**，配置对象可以省略。以 `@uno-pc/jsx-directive` 为例：
 
 ```sh
 pnpm add -D @uno-pc/jsx-directive

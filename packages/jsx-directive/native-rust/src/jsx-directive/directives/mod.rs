@@ -3,7 +3,6 @@ pub(crate) mod v_bind;
 pub(crate) mod v_for;
 pub(crate) mod v_html_text;
 pub(crate) mod v_if;
-pub(crate) mod v_memo;
 pub(crate) mod v_model;
 pub(crate) mod v_show;
 
@@ -85,4 +84,3 @@ pub(crate) fn warn_orphan(
     }
     Ok(())
 }
-

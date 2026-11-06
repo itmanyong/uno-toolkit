@@ -109,8 +109,7 @@ test("使用 Rsbuild 插件即注册 JSX 指令转换", () => {
     code: "<div style={{[\"display\"]: (visible) ? (undefined) : ('none')}} />",
     map: expect.any(String),
   });
-  // 不用 "pre"：Rsbuild 的多个 pre transform 按注册逆序执行，
-  // default 档保证 reactivue（pre，消费 v-memo）恒先于本插件。
+  // 无需显式 plugin order，使用默认档即可。
   expect(registration.order).toBeUndefined();
   expect(registration.test.test("component.tsx")).toBe(true);
   expect(registration.test.test("component.vue")).toBe(false);
@@ -135,43 +134,6 @@ test("Rsbuild 插件按配置筛选格式并传递前缀", () => {
   ).toBe(false);
 });
 
-test("Vite 插件对残留 v-memo 抛出编译期错误", () => {
-  const source = "const A = () => <p v-memo={[x]}>hi</p>;";
-  expect(() =>
-    invokeTransform(JsxDirectiveVite(), source, "component.tsx"),
-  ).toThrow(/@uno-pc\/reactivue/);
-  expect(() =>
-    invokeTransform(JsxDirectiveVite(), source, "component.tsx"),
-  ).toThrow(/component\.tsx:1:\d+:/);
-});
-
-test("memo: preserve 关闭残留报错", () => {
-  const source = "const A = () => <p v-memo={[x]}>hi</p>;";
-  expect(
-    invokeTransform(
-      JsxDirectiveVite({ memo: "preserve" }),
-      source,
-      "component.tsx",
-    ),
-  ).toBeNull();
-});
-
-test("Rsbuild 插件对残留 v-memo 同样抛错", () => {
-  const { registration } = setupRsbuild();
-  expect(() =>
-    registration.transform({
-      code: "const A = () => <p v-memo={[x]}>hi</p>;",
-      resourcePath: "component.tsx",
-    }),
-  ).toThrow(/@uno-pc\/reactivue/);
-  expect(() =>
-    registration.transform({
-      code: "const A = () => <p v-memo={[x]}>hi</p>;",
-      resourcePath: "component.tsx",
-    }),
-  ).toThrow(/component\.tsx:1:\d+:/);
-});
-
 test("Rsbuild 插件对未变化代码返回原文并报告带行列的警告", () => {
   const { registration, warnings } = setupRsbuild();
   const source = 'const label = "你好";\n<div v-else />';
@@ -185,7 +147,8 @@ test("Rsbuild 插件对未变化代码返回原文并报告带行列的警告", 
 });
 
 test("有代码变化时输出 source map（UTF-16 偏移对齐）", () => {
-  const source = 'const label = "你好";\nconst A = () => <div v-show={visible} />;';
+  const source =
+    'const label = "你好";\nconst A = () => <div v-show={visible} />;';
   const hook = JsxDirectiveVite().transform;
   if (!hook) throw new Error("缺少 transform hook");
   const handler = typeof hook === "function" ? hook : hook.handler;

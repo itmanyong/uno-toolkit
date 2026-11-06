@@ -15,8 +15,7 @@ export const JsxDirectiveRsbuild = (
     api.transform(
       {
         test: formats ? new RegExp(`\\.(${formats})$`, "i") : /$a/,
-        // 不用 "pre"：Rsbuild 的多个 pre transform 按注册逆序执行，
-        // 而 reactivue 是 pre —— default 保证 reactivue（消费 v-memo）永远先跑。
+        // 使用默认档即可，无需显式 order。
       },
       ({ code, resourcePath }) => {
         const result = transformDirectives(code, resourcePath, config);

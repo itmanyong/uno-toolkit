@@ -10,19 +10,19 @@ React JSX / TSX 指令的编译期转换插件，支持条件、循环、内容�
 
 插件使用 Rust 与 tree-sitter 在构建期改写 JSX/TSX，转换后不引入额外运行时依赖。
 
-| 能力                            | 说明                                                                                               |
-| ------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `v-if` / `v-else-if` / `v-else` | 同一层级的相邻 JSX 兄弟节点组成条件链，转换为条件渲染。                                            |
-| `v-show`                        | 保留元素，按条件写入样式属性（默认 `display`），不卸载节点。                                       |
-| `v-html` / `v-text`             | 分别注入 HTML 和替换元素文本内容。                                                                 |
-| `v-for`                         | 将数组转换为 `.map()` 列表；可与 `v-if` 同用。                                                     |
-| `v-bind`                        | 支持对象展开、具名属性绑定及 `:name` 简写。                                                        |
-| `v-model`                       | 支持原生表单控件和 Vue 3 风格自定义组件模型（暂不支持修饰符）。                                     |
-| 构建工具入口                    | 导出 `JsxDirectiveVite` 与 `JsxDirectiveRsbuild`。                                                 |
-| 核心 API                        | 包根入口还导出 `transformDirectives`、`getFormats`、`reportWarnings` 及配置类型，便于自行集成。       |
-| 转换时机                        | Vite 插件 `enforce: "pre"`；Rsbuild 插件固定 default 档（不设 `order`），保证 `@uno-pc/reactivue`（`pre` 档，消费 `v-memo`）恒先执行 —— Rsbuild 的多个 `pre` transform 按注册逆序执行，顺序不能靠注册先后保证。 |
-| 默认处理范围                    | `.jsx`、`.tsx`，匹配不区分大小写。                                                                 |
-| 诊断                            | 无效指令、冲突或孤立分支会通过构建工具 logger 输出警告。                                           |
+| 能力                            | 说明                                                                                            |
+| ------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `v-if` / `v-else-if` / `v-else` | 同一层级的相邻 JSX 兄弟节点组成条件链，转换为条件渲染。                                         |
+| `v-show`                        | 保留元素，按条件写入样式属性（默认 `display`），不卸载节点。                                    |
+| `v-html` / `v-text`             | 分别注入 HTML 和替换元素文本内容。                                                              |
+| `v-for`                         | 将数组转换为 `.map()` 列表；可与 `v-if` 同用。                                                  |
+| `v-bind`                        | 支持对象展开、具名属性绑定及 `:name` 简写。                                                     |
+| `v-model`                       | 支持原生表单控件和 Vue 3 风格自定义组件模型（暂不支持修饰符）。                                 |
+| 构建工具入口                    | 导出 `JsxDirectiveVite` 与 `JsxDirectiveRsbuild`。                                              |
+| 核心 API                        | 包根入口还导出 `transformDirectives`、`getFormats`、`reportWarnings` 及配置类型，便于自行集成。 |
+| 转换时机                        | Vite 插件 `enforce: "pre"`；Rsbuild 插件使用默认 transform 档。                                 |
+| 默认处理范围                    | `.jsx`、`.tsx`，匹配不区分大小写。                                                              |
+| 诊断                            | 无效指令、冲突或孤立分支会通过构建工具 logger 输出警告。                                        |
 
 ## 安装与配置
 
@@ -165,7 +165,9 @@ export interface JsxDirectiveAttributes {
 类型：`"v-show"?: unknown`。元素始终保留，条件值用于切换样式；已有表达式形式的 `style` 会先展开再合并。
 
 ```tsx
-<div style={{ color: "#8ab4f8" }} v-show={visible}>内容</div>
+<div style={{ color: "#8ab4f8" }} v-show={visible}>
+  内容
+</div>
 ```
 
 ### `v-html`
@@ -194,8 +196,10 @@ const item = "";
 const items = ["Alpha", "Beta", "Gamma"];
 
 <ul>
-  <li v-for={item in items} key={item}>{item}</li>
-</ul>
+  <li v-for={item in items} key={item}>
+    {item}
+  </li>
+</ul>;
 ```
 
 它也支持与 `v-if` 同用，以及 `v-for={(item, index) in items}` 双变量形式。后者虽然能转换，但 TypeScript 会对逗号表达式报告 TS2695，类型声明无法消除；需要无诊断的 TSX 示例时请使用单变量形式。
@@ -343,7 +347,14 @@ export default function App() {
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   // 指令编译前，TypeScript 不会为 v-model 自动识别生成的 setter。
-  void [setAgreed, setCheckedNames, setPicked, setSelected, setSelectedList, setEmail];
+  void [
+    setAgreed,
+    setCheckedNames,
+    setPicked,
+    setSelected,
+    setSelectedList,
+    setEmail,
+  ];
 
   const items = ["Alpha", "Beta", "Gamma"];
   // v-for 的局部变量由构建期生成的 map 回调提供；占位变量仅供源代码静态检查。
@@ -376,14 +387,12 @@ export default function App() {
         <div v-html={rawHtml} />
         <p v-text={keyword}>这段初始内容会被 v-text 替换</p>
         <ul>
-          <li v-for={item in items} key={item}>{item}</li>
+          <li v-for={item in items} key={item}>
+            {item}
+          </li>
         </ul>
         <ul>
-          <li
-            v-if={items.length > 0}
-            v-for={item in items}
-            key={item}
-          >
+          <li v-if={items.length > 0} v-for={item in items} key={item}>
             条件先判断，再循环：{item}
           </li>
         </ul>
@@ -397,24 +406,22 @@ export default function App() {
 
       <section className="panel">
         <h2>v-model</h2>
-        <label>文本：<input v-model={keyword} /></label>
-        <label>显式 setter：<textarea v-model={[keyword, setKeyword]} /></label>
+        <label>
+          文本：
+          <input v-model={keyword} />
+        </label>
+        <label>
+          显式 setter：
+          <textarea v-model={[keyword, setKeyword]} />
+        </label>
         <label>
           <input type="checkbox" v-model={agreed} /> 同意（布尔模型）
         </label>
         <label>
-          <input
-            type="checkbox"
-            value="Jack"
-            v-model={checkedNames}
-          /> Jack
+          <input type="checkbox" value="Jack" v-model={checkedNames} /> Jack
         </label>
         <label>
-          <input
-            type="checkbox"
-            value="Mike"
-            v-model={checkedNames}
-          /> Mike
+          <input type="checkbox" value="Mike" v-model={checkedNames} /> Mike
         </label>
         <p>已选：{checkedNames.join(", ") || "无"}</p>
         <label>
@@ -440,9 +447,15 @@ export default function App() {
           </select>
         </label>
         <p>多选：{selectedList.join(", ")}</p>
-        <label>组件输入：<ModelInput v-model={email} /></label>
+        <label>
+          组件输入：
+          <ModelInput v-model={email} />
+        </label>
         <p>组件模型：{email || "未填写"}</p>
-        <label>具名输入：<NamedModelInput v-model:first={[firstName, setFirstName]} /></label>
+        <label>
+          具名输入：
+          <NamedModelInput v-model:first={[firstName, setFirstName]} />
+        </label>
         <p>具名模型：{firstName || "未填写"}</p>
       </section>
     </main>
@@ -451,9 +464,11 @@ export default function App() {
 
 const VifElse = ({ state }: { state: ViewState }) => (
   <section className="panel">
-    <p v-if={state === "ready"}>已就绪</p><p v-else-if={state === "loading"}>加载中</p><p v-else>暂不可用</p>
+    <p v-if={state === "ready"}>已就绪</p>
+    <p v-else-if={state === "loading"}>加载中</p>
+    <p v-else>暂不可用</p>
   </section>
-  );
+);
 
 const VShow = ({ visible }: { visible: boolean }) => (
   <section className="panel">
@@ -464,7 +479,7 @@ const VShow = ({ visible }: { visible: boolean }) => (
       </Fragment>
     </div>
   </section>
-  );
+);
 ```
 
 ### 运行与观察

@@ -38,7 +38,7 @@ pub(crate) fn looks_like_generic(source: &str, start: usize) -> bool {
 
 pub(crate) fn has_directive_candidate(source: &str, prefix: &str) -> bool {
     [
-        "if", "else-if", "else", "show", "html", "text", "for", "bind", "model", "memo",
+        "if", "else-if", "else", "show", "html", "text", "for", "bind", "model",
     ]
     .iter()
     .any(|directive| source.contains(&format!("{prefix}{directive}")))

@@ -38,7 +38,7 @@ export const reportWarnings = (
   }
 };
 
-/** R-A：残留 v-memo 属于正确性错误，必须在编译期阻断而非降级为告警。 */
+/** 编译期阻断错误，必须在编译期 throw 而非降级为告警。 */
 export const throwOnErrors = (
   errors: TransformWarning[] | undefined,
   id: string,

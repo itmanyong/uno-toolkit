@@ -11,8 +11,6 @@ pub struct TransformOptions {
     pub show_property: Option<String>,
     pub show_true_value: Option<String>,
     pub show_false_value: Option<String>,
-    /// R-A：输入中残留 v-memo 时的处理，'error'（默认）| 'preserve'。
-    pub memo: Option<String>,
 }
 
 #[napi(object)]
@@ -26,7 +24,7 @@ pub struct Warning {
 pub struct TransformResult {
     pub code: String,
     pub warnings: Vec<Warning>,
-    /// 编译期阻断错误（R-A：残留 v-memo），插件侧必须 throw。
+    /// 编译期阻断错误，插件侧必须 throw。
     pub errors: Vec<Warning>,
     /// 顶层编辑区间（原码 UTF-16 偏移 → 替换文本），供 TS 侧生成 source map。
     pub edits: Vec<SourceEdit>,
@@ -48,7 +46,6 @@ pub(crate) struct Config {
     pub(crate) show_property: String,
     pub(crate) show_true_value: String,
     pub(crate) show_false_value: String,
-    pub(crate) memo: String,
 }
 
 impl From<Option<TransformOptions>> for Config {
@@ -65,7 +62,6 @@ impl From<Option<TransformOptions>> for Config {
                 .show_true_value
                 .unwrap_or_else(|| "undefined".into()),
             show_false_value: options.show_false_value.unwrap_or_else(|| "'none'".into()),
-            memo: options.memo.unwrap_or_else(|| "error".into()),
         }
     }
 }

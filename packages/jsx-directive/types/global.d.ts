@@ -13,8 +13,6 @@ interface JsxDirectiveAttributes {
   "v-bind"?: object;
   [attribute: `v-bind:${string}`]: unknown;
   "v-bind:name"?: unknown;
-  /** R-A：语法外壳归本包，语义降低由 @uno-pc/reactivue 插件完成。 */
-  "v-memo"?: unknown[];
   [attribute: `v-model:${string}`]: unknown;
   "v-model"?: unknown;
   "v-model:name"?: unknown;

@@ -99,7 +99,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for pkg in jsx-directive reactivue signals-transform style-layer; do
+          for pkg in jsx-directive signals-transform style-layer; do
             for t in ${{ matrix.targets }}; do
               echo "::group::build $pkg @ $t"
               TARGET_TRIPLE="$t" node "packages/$pkg/scripts/build-native.mjs"
@@ -162,7 +162,7 @@ jobs:
         run: pnpm changeset version
 
       - name: Build JS packages
-        run: pnpm --filter "@uno-pc/jsx-directive" --filter "@uno-pc/reactivue" --filter "@uno-pc/style-layer" --filter "@uno-pc/signals-transform" run build:js
+        run: pnpm --filter "@uno-pc/jsx-directive" --filter "@uno-pc/style-layer" --filter "@uno-pc/signals-transform" run build:js
 
       - name: Setup npm auth
         run: npm config set //registry.npmjs.org/:_authToken "${NPM_TOKEN}"
