@@ -1,0 +1,29 @@
+body {
+  margin: 0;
+  color: #fff;
+  font-family: Inter, Helvetica, Arial, sans-serif;
+  background-image: linear-gradient(to bottom, #020917, #101725);
+}
+
+.content {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+
+.card {
+  gap: 10px;
+}
+
+.btn {
+  background: #2a2f3a;
+  color: #fff;
+  border: 1px solid #4b5563;
+  padding: 6px 10px;
+}
+
+.notice {
+  border-left: 4px solid #f28b82;
+  padding-left: 12px;
+  color: #f28b82;
+}

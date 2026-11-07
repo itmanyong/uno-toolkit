@@ -1,0 +1,21 @@
+{
+  "name": "style-rewrite-all",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "rs build",
+    "dev": "rs dev",
+    "lint": "rs lint",
+    "preview": "rs preview",
+    "test": "rs test",
+    "fmt": "rs fmt"
+  },
+  "devDependencies": {
+    "@rsbuild/core": "catalog:",
+    "@types/node": "catalog:",
+    "@uno-pc/style-rewrite": "workspace:*",
+    "rstack": "catalog:",
+    "typescript": "catalog:"
+  }
+}

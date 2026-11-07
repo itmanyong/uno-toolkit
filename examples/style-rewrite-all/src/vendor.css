@@ -1,0 +1,7 @@
+/* 模拟第三方样式：`.card` 的 padding 会被示例配置先移除再追加。 */
+.card {
+  padding: 8px 12px;
+  border: 1px solid #8ab4f8;
+  border-radius: 12px;
+  color: #f28b82;
+}

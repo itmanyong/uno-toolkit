@@ -1,0 +1,16 @@
+[package]
+name = "style-rewrite-native"
+version = "0.0.1"
+edition = "2024"
+
+[lib]
+name = "style_rewrite_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "3", features = ["napi8"] }
+napi-derive = "3"
+regex = "1"
+
+[build-dependencies]
+napi-build = "2"

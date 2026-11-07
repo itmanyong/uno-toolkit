@@ -1,6 +1,6 @@
 # 开始使用
 
-Uno Toolkit 提供三个在**构建期**改写代码的插件。转换结果进入构建产物，业务源码保持简洁；除了 `@uno-pc/signals-transform` 需要应用自带 `@preact/signals-react` 运行时外，其余两个插件不向应用引入运行时依赖。
+Uno Toolkit 提供四个在**构建期**改写代码的插件。转换结果进入构建产物，业务源码保持简洁；除了 `@uno-pc/signals-transform` 需要应用自带 `@preact/signals-react` 运行时外，其余三个插件不向应用引入运行时依赖。
 
 ## 插件一览
 
@@ -8,6 +8,7 @@ Uno Toolkit 提供三个在**构建期**改写代码的插件。转换结果进�
 | --------------------------- | --------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------- |
 | `@uno-pc/jsx-directive`     | 把 JSX 指令转换为条件表达式与样式属性               | React 项目中希望用指令写法表达条件渲染与显示控制    | [/plugins/jsx-directive](/plugins/jsx-directive)         |
 | `@uno-pc/style-layer`       | 把 CSS 放入指定 `@layer`，并为 `@import` 注入 layer | 需要在构建期确定第三方样式与应用样式的层叠顺序      | [/plugins/style-layer](/plugins/style-layer)             |
+| `@uno-pc/style-rewrite`     | 按配置替换或追加 CSS，选择器追加会先去掉同名声明    | 需要统一治理第三方样式、覆盖遗留样式或替换品牌色    | [/plugins/style-rewrite](/plugins/style-rewrite)         |
 | `@uno-pc/signals-transform` | 自动注入 `useSignals` 并用 `try/finally` 收尾跟踪   | 使用 Preact Signals React，希望省去手写跟踪样板代码 | [/plugins/signals-transform](/plugins/signals-transform) |
 
 每个插件同时提供 Vite 与 Rsbuild 两种入口，通过包名的 `/vite` 与 `/rsbuild` 子路径导入。
@@ -21,7 +22,7 @@ Uno Toolkit 提供三个在**构建期**改写代码的插件。转换结果进�
 
 ## 安装与启用
 
-三个构建期插件都作为开发依赖安装，**注册插件即启用转换**，配置对象可以省略。以 `@uno-pc/jsx-directive` 为例：
+四个构建期插件都作为开发依赖安装，**注册插件即启用转换**。`@uno-pc/jsx-directive`、`@uno-pc/style-layer` 与 `@uno-pc/signals-transform` 省略配置对象即可工作，`@uno-pc/style-rewrite` 需要提供 `configs` 才会改写文件。以 `@uno-pc/jsx-directive` 为例：
 
 ```sh
 pnpm add -D @uno-pc/jsx-directive

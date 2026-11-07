@@ -6,7 +6,8 @@ define.doc({
   // 本地开发保持 "/"，CI 构建时通过 DOC_BASE 注入。
   base: process.env.DOC_BASE ?? "/",
   title: "Uno Toolkit 文档",
-  description: "三个构建期转换插件的使用文档：功能说明、安装配置与完整示例。",
+  description:
+    "四个构建期转换插件的使用文档：功能说明、安装配置与完整示例。",
   lang: "zh",
   logoText: "uno-toolkit",
   themeConfig: {
@@ -17,6 +18,7 @@ define.doc({
         items: [
           { text: "JSX 指令", link: "/plugins/jsx-directive" },
           { text: "样式分层", link: "/plugins/style-layer" },
+          { text: "样式重写", link: "/plugins/style-rewrite" },
           { text: "Signals 转换", link: "/plugins/signals-transform" },
         ],
       },
@@ -36,6 +38,10 @@ define.doc({
           items: [
             { text: "@uno-pc/jsx-directive", link: "/plugins/jsx-directive" },
             { text: "@uno-pc/style-layer", link: "/plugins/style-layer" },
+            {
+              text: "@uno-pc/style-rewrite",
+              link: "/plugins/style-rewrite",
+            },
             {
               text: "@uno-pc/signals-transform",
               link: "/plugins/signals-transform",
