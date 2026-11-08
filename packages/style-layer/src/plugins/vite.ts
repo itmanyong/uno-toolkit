@@ -6,12 +6,12 @@ import type { StyleLayerTransformConfig } from "../core/types";
 const styleFilePattern =
   /\.(?:css|scss|sass|less|styl|stylus|pcss|postcss)(?:\?.*)?$/i;
 
-export const StyleLayerVite = (
+export const StyleLayerPluginVite = (
   config: StyleLayerTransformConfig = {},
 ): Plugin => {
   return {
     name: "vite-plugin-style-layer",
-    enforce: config.enforce ?? "post",
+    enforce: config.enforce ?? "pre",
     transform(code, id) {
       if (!styleFilePattern.test(id)) return null;
       const transformStyleCode = (importsCode: string) => {

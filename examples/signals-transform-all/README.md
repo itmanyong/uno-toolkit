@@ -15,10 +15,10 @@ pnpm dev
 
 ## 演示内容
 
-| 操作 | 预期效果 |
-| --- | --- |
-| 点击 `+1` | 计数与派生值同步更新，说明组件已获得信号跟踪能力 |
-| 点击「重置」 | 计数与派生值同时归零 |
+| 操作               | 预期效果                                           |
+| ------------------ | -------------------------------------------------- |
+| 点击 `+1`          | 计数与派生值同步更新，说明组件已获得信号跟踪能力   |
+| 点击「重置」       | 计数与派生值同时归零                               |
 | 查看 `src/App.tsx` | 组件只访问 `count.value`，没有手写任何跟踪样板代码 |
 
 `rstack.config.ts` 以 `mode: "auto"` 注册插件，`App` 以大写字母开头、包含 JSX 并访问 `.value`，因此会被自动注入 `useSignals`；自定义 Hook `useDoubledCount` 用 `@useSignals` 显式标记。把 `mode` 改成 `manual` 或 `all` 可对比三种模式的转换差异。
@@ -29,7 +29,7 @@ pnpm dev
 
 ## 关键文件
 
-- `rstack.config.ts`：注册 `SignalsTransformRsbuild`
+- `rstack.config.ts`：注册 `SignalsTransformPluginRsbuild`
 - `src/App.tsx`：信号状态、组件与自定义 Hook
 - `package.json`：`@preact/signals-react` 运行时依赖
 

@@ -56,7 +56,7 @@ pub(crate) fn wrap_for(
     }
     let binding = opening_element(node).and_then(|opening| {
         attributes(opening).into_iter().find_map(|attr| {
-            (attribute_name(attr, source) == Some(&format!("{}for", config.prefix)))
+            (config.matches_suffix(&attribute_name(attr, source).unwrap_or_default(), "for"))
                 .then(|| loop_binding(attr, source))
                 .flatten()
         })
@@ -75,4 +75,3 @@ pub(crate) fn wrap_for(
         format!("({expression})")
     }
 }
-

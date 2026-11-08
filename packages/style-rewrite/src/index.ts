@@ -1,5 +1,5 @@
-export { StyleRewriteRsbuild } from "./plugins/rsbuild";
-export { StyleRewriteVite } from "./plugins/vite";
+export { StyleRewritePluginRsbuild } from "./plugins/rsbuild";
+export { StyleRewritePluginVite } from "./plugins/vite";
 export {
   minifyCss,
   resolveStyleRewriteConfigs,

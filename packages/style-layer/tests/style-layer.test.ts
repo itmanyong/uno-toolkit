@@ -2,8 +2,8 @@ import { expect, test } from "rstack/test";
 import type { Plugin } from "vite";
 import type { StyleLayerTransformOptions } from "../src/core";
 import { resolveStyleLayer } from "../src/core";
-import { StyleLayerRsbuild } from "../src/plugins/rsbuild";
-import { StyleLayerVite } from "../src/plugins/vite";
+import { StyleLayerPluginRsbuild } from "../src/plugins/rsbuild";
+import { StyleLayerPluginVite } from "../src/plugins/vite";
 
 const invokeTransform = (plugin: Plugin, code: string, id: string): unknown => {
   const hook = plugin.transform;
@@ -58,7 +58,7 @@ test("图层名称回调可根据文件信息返回名称", () => {
 
 test("使用 Vite 插件即启用样式层转换", () => {
   expect(
-    invokeTransform(StyleLayerVite(), ".button { color: red; }", "styles.css"),
+    invokeTransform(StyleLayerPluginVite(), ".button { color: red; }", "styles.css"),
   ).toEqual({
     code: "@layer default {\n.button { color: red; }\n}",
     map: null,
@@ -66,7 +66,7 @@ test("使用 Vite 插件即启用样式层转换", () => {
 });
 
 test("Vite 插件可将匹配样式放入指定层", () => {
-  const plugin = StyleLayerVite({
+  const plugin = StyleLayerPluginVite({
     exclude: [],
     include: "**/node_modules/**/*.css",
     layerName: "vendor",
@@ -91,7 +91,7 @@ test("拒绝无效的 CSS layer 名称", () => {
 });
 
 test("Rsbuild 插件为匹配的 CSS 导入添加图层", async () => {
-  const plugin = StyleLayerRsbuild({
+  const plugin = StyleLayerPluginRsbuild({
     exclude: [],
     configs: [
       {

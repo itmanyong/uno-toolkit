@@ -1,8 +1,8 @@
 import { expect, test } from "rstack/test";
 import { transformSignals } from "../src/core";
 import type { Plugin } from "vite";
-import { SignalsTransformRsbuild } from "../src/plugins/rsbuild";
-import { SignalsTransformVite } from "../src/plugins/vite";
+import { SignalsTransformPluginRsbuild } from "../src/plugins/rsbuild";
+import { SignalsTransformPluginVite } from "../src/plugins/vite";
 
 const invokeTransform = (plugin: Plugin, code: string, id: string): unknown => {
   const hook = plugin.transform;
@@ -51,13 +51,13 @@ test("使用 Vite 插件即启用 Signals 转换", () => {
 
   expect(
     JSON.stringify(
-      invokeTransform(SignalsTransformVite(), source, "component.tsx"),
+      invokeTransform(SignalsTransformPluginVite(), source, "component.tsx"),
     ),
   ).toContain("_useSignals(1)");
 });
 
 test("Rsbuild 插件注册 Signals 转换", () => {
-  const plugin = SignalsTransformRsbuild();
+  const plugin = SignalsTransformPluginRsbuild();
   let handler:
     | ((input: {
         code: string;

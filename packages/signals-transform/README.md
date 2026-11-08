@@ -23,12 +23,12 @@ pnpm add @preact/signals-react
 ### Vite
 
 ```ts
-import { SignalsTransformVite } from "@uno-pc/signals-transform/vite";
+import { SignalsTransformPluginVite } from "@uno-pc/signals-transform/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [
-    SignalsTransformVite({
+    SignalsTransformPluginVite({
       mode: "auto",
       importSource: "@preact/signals-react/runtime",
     }),
@@ -40,10 +40,10 @@ export default defineConfig({
 
 ```ts
 import { defineConfig } from "@rsbuild/core";
-import { SignalsTransformRsbuild } from "@uno-pc/signals-transform/rsbuild";
+import { SignalsTransformPluginRsbuild } from "@uno-pc/signals-transform/rsbuild";
 
 export default defineConfig({
-  plugins: [SignalsTransformRsbuild()],
+  plugins: [SignalsTransformPluginRsbuild()],
 });
 ```
 

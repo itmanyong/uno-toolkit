@@ -7,7 +7,9 @@ import type {
 } from "./types";
 
 export {
+  type StyleRewriteAssetStage,
   type StyleRewriteConfig,
+  type StyleRewriteMode,
   type StyleRewriteOptions,
   type StyleRewritePattern,
   type StyleRewriteRule,
@@ -71,8 +73,8 @@ const matchesPath = (
   patterns.some((pattern) => matchesPattern(pattern, filePath));
 
 const toRule = (config: StyleRewriteConfig): StyleRewriteRule => ({
-  matchReg: toStringList(config.matchReg),
-  rewrite: config.rewrite,
+  matchReg: toStringList(config.rewriteMatchReg),
+  rewrite: config.rewriteContent,
   rewriteType: config.rewriteType ?? "replace",
 });
 
@@ -86,7 +88,7 @@ export const resolveStyleRewriteConfigs = (
   const rules: StyleRewriteRule[] = [];
 
   for (const config of options.configs ?? []) {
-    if (!matchesPath(toPatterns(config.pathReg), filePath)) continue;
+    if (!matchesPath(toPatterns(config.matchPathReg), filePath)) continue;
     rules.push(toRule(config));
   }
 
@@ -107,4 +109,3 @@ export const transformStyleRewrite = (
 };
 
 export const minifyCss = (code: string): string => native.minifyCss(code);
-

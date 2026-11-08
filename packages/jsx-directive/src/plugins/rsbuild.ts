@@ -4,7 +4,7 @@ import { buildSourceMap } from "./sourcemap";
 import type { DirectiveTransformConfig } from "../core/types";
 import { reportWarnings, throwOnErrors } from "../shared/warnings";
 
-export const JsxDirectiveRsbuild = (
+export const JsxDirectivePluginRsbuild = (
   config: DirectiveTransformConfig = {},
 ): RsbuildPlugin => ({
   name: "rsbuild-plugin-jsx-directive",

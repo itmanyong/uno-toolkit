@@ -6,9 +6,9 @@ test("扩展名使用规范化后的 JSX 默认格式", () => {
   expect(getFormats({ formats: [".TSX", "jsx"] })).toEqual(["tsx", "jsx"]);
 });
 
-test("按配置的 display 样式转换 v-show", () => {
+test("按配置的 display 样式转换 x-show", () => {
   const result = transformDirectives(
-    "<div v-show={visible} />",
+    "<div x-show={visible} />",
     "component.tsx",
   );
 
@@ -19,7 +19,7 @@ test("按配置的 display 样式转换 v-show", () => {
 });
 
 test("不支持的文件格式保持源码不变", () => {
-  const code = "<div v-show={visible} />";
+  const code = "<div x-show={visible} />";
 
   // 不支持的格式：提前返回，edits 为空
   expect(transformDirectives(code, "component.vue")).toEqual({
@@ -33,11 +33,13 @@ test("自定义格式、前缀、条件兜底和显示样式通过公开入口�
   const options = {
     formats: [".JSX"],
     prefix: "x-",
-    ifFallback: "<Empty />",
-    show: {
+    vIf: {
+      notFallback: "<Empty />",
+    },
+    vShow: {
       property: "visibility",
-      whenTrue: "'visible'",
-      whenFalse: "'hidden'",
+      whenTrueValue: "'visible'",
+      whenFalseValue: "'hidden'",
     },
   };
   const source = "<A x-if={ready} x-show={visible} />";
@@ -54,13 +56,13 @@ test("自定义格式、前缀、条件兜底和显示样式通过公开入口�
   );
 });
 
-test("v-html 与 v-text 替换原有子节点", () => {
+test("x-html 与 x-text 替换原有子节点", () => {
   const html = transformDirectives(
-    "<div v-html={markup}><span>old</span></div>",
+    "<div x-html={markup}><span>old</span></div>",
     "component.tsx",
   );
   const text = transformDirectives(
-    "<div v-text={message}>old</div>",
+    "<div x-text={message}>old</div>",
     "component.tsx",
   );
 
@@ -76,21 +78,21 @@ test("v-html 与 v-text 替换原有子节点", () => {
   });
 });
 
-test("v-for 展开列表并保留循环变量与嵌套元素", () => {
+test("x-for 展开列表并保留循环变量与嵌套元素", () => {
   const result = transformDirectives(
-    "<ul><li v-for={(item, index) in items} key={index}><b>{item.name}</b></li></ul>",
+    "<ul><li x-for={(item, index) in items} key={index}><b>{item.name}</b></li></ul>",
     "component.tsx",
   );
 
   expect(result.code).toContain("items).map((item, index)");
   expect(result.code).toContain("key={index}><b>{item.name}</b>");
-  expect(result.code).not.toContain("v-for");
+  expect(result.code).not.toContain("x-for");
   expect(result.warnings).toEqual([]);
 });
 
-test("v-bind 支持对象展开、命名属性与简写", () => {
+test("x-bind 支持对象展开与命名属性", () => {
   const result = transformDirectives(
-    "<div v-bind:title={title} :id={elementId} v-bind={props} />",
+    "<div x-bind:title={title} x-bind:id={elementId} x-bind={props} />",
     "component.tsx",
   );
 
@@ -101,13 +103,13 @@ test("v-bind 支持对象展开、命名属性与简写", () => {
   });
 });
 
-test("v-model 为原生输入和自定义组件生成绑定与更新回调", () => {
+test("x-model 为原生输入和自定义组件生成绑定与更新回调", () => {
   const input = transformDirectives(
-    '<input type="checkbox" value={option} v-model={choices} />',
+    '<input type="checkbox" value={option} x-model={choices} />',
     "component.tsx",
   );
   const component = transformDirectives(
-    "<Field v-model:first={[name, update]} />",
+    "<Field x-model:first={[name, update]} />",
     "component.tsx",
   );
 
@@ -115,23 +117,23 @@ test("v-model 为原生输入和自定义组件生成绑定与更新回调", () 
   expect(input.code).toContain(
     "onChange={event => (setChoices)(event.currentTarget.checked",
   );
-  expect(input.code).not.toContain("v-model");
+  expect(input.code).not.toContain("x-model");
   expect(component.code).toContain(
     "first={name} onUpdateFirst={value => (update)(value)}",
   );
-  expect(component.code).not.toContain("v-model");
+  expect(component.code).not.toContain("x-model");
   expect(input.warnings).toEqual([]);
   expect(component.warnings).toEqual([]);
 });
 
 test("冲突的内容指令保留原文并提供源码范围", () => {
-  const source = "<div v-html={markup} v-text={message}>old</div>";
+  const source = "<div x-html={markup} x-text={message}>old</div>";
   const result = transformDirectives(source, "component.tsx");
 
   expect(result.code).toBe(source);
   expect(result.warnings).toEqual([
     {
-      message: "v-html and v-text cannot be used together",
+      message: "x-html and x-text cannot be used together",
       start: 0,
       end: Buffer.byteLength(source.slice(0, source.indexOf(">") + 1)),
     },
@@ -141,18 +143,18 @@ test("冲突的内容指令保留原文并提供源码范围", () => {
 test("不合法的绑定和模型保留原文并报告指令位置", () => {
   for (const [source, directive, message] of [
     [
-      '<div v-bind:title="literal" />',
-      'v-bind:title="literal"',
+      '<div x-bind:title="literal" />',
+      'x-bind:title="literal"',
       "must use JSX expression syntax",
     ],
     [
-      "<input value={name} v-model={name} />",
-      "v-model={name}",
+      "<input value={name} x-model={name} />",
+      "x-model={name}",
       "conflicts with an existing value",
     ],
     [
-      '<li v-for="item in items" />',
-      'v-for="item in items"',
+      '<li x-for="item in items" />',
+      'x-for="item in items"',
       "must use JSX expression syntax",
     ],
   ]) {
@@ -170,26 +172,26 @@ test("不合法的绑定和模型保留原文并报告指令位置", () => {
 
 test("分支之间的空格与换行不中断条件链", () => {
   const result = transformDirectives(
-    "<><A v-if={first} />\n  <B v-else-if={second} />\n  <C v-else /></>",
+    "<><A x-if={first} />\n  <B x-else-if={second} />\n  <C x-else /></>",
     "component.tsx",
   );
 
   expect(result.code).toContain("(first) ? (<A />)");
   expect(result.code).toContain("(second) ? (<B />)");
   expect(result.code).toContain("(<C />)");
-  expect(result.code).not.toContain("v-else");
+  expect(result.code).not.toContain("x-else");
   expect(result.warnings).toEqual([]);
 });
 
 test("分支周围的空白与注释不中断条件链", () => {
   const result = transformDirectives(
-    "<><A v-if={first} /> {/* keep */}<B v-else /></>",
+    "<><A x-if={first} /> {/* keep */}<B x-else /></>",
     "component.tsx",
   );
 
   expect(result.code).toContain("(first) ? (<A />)");
   expect(result.code).toContain("/* keep */");
   expect(result.code).toContain("<B />");
-  expect(result.code).not.toContain("v-else");
+  expect(result.code).not.toContain("x-else");
   expect(result.warnings).toEqual([]);
 });

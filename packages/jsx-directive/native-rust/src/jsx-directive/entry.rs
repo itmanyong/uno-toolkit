@@ -7,7 +7,6 @@ use crate::jsx_directive::parser::TSX_PARSER;
 use crate::jsx_directive::render::render_node;
 use crate::jsx_directive::types::SourceEdit;
 use crate::jsx_directive::utils::Utf16Index;
-use crate::jsx_directive::shorthand::normalize_shorthand;
 use crate::jsx_directive::types::{Config, TransformOptions, TransformResult};
 use crate::jsx_directive::utils::has_directive_candidate;
 
@@ -30,7 +29,7 @@ pub fn jsx_directive(
             errors: Vec::new(),
         });
     }
-    if !has_directive_candidate(&code, &config.prefix) {
+    if !has_directive_candidate(&code, &config.prefixes) {
         return Ok(TransformResult {
             edits: vec![],
             code,
@@ -39,8 +38,6 @@ pub fn jsx_directive(
         });
     }
 
-    let mut parse_source = code.as_bytes().to_vec();
-    normalize_shorthand(&code, &mut parse_source, 0, false);
     let tree = TSX_PARSER.with(|parser_cell| {
         let mut parser_slot = parser_cell
             .try_borrow_mut()
@@ -57,7 +54,7 @@ pub fn jsx_directive(
         parser_slot
             .as_mut()
             .expect("parser initialized")
-            .parse(&parse_source, None)
+            .parse(&code, None)
             .ok_or_else(|| Error::from_reason("Unable to parse JSX/TSX source"))
     })?;
     if tree.root_node().has_error() {

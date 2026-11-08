@@ -36,20 +36,15 @@ pub(crate) fn looks_like_generic(source: &str, start: usize) -> bool {
     source[start + 1..end].contains(',') && source[end + 1..].trim_start().starts_with('(')
 }
 
-pub(crate) fn has_directive_candidate(source: &str, prefix: &str) -> bool {
-    [
+pub(crate) fn has_directive_candidate(source: &str, prefixes: &[String]) -> bool {
+    let directives = [
         "if", "else-if", "else", "show", "html", "text", "for", "bind", "model",
-    ]
-    .iter()
-    .any(|directive| source.contains(&format!("{prefix}{directive}")))
-        || (source.contains('<')
-            && source.match_indices(':').any(|(index, _)| {
-                index > 0
-                    && source.as_bytes()[index - 1].is_ascii_whitespace()
-                    && source.as_bytes().get(index + 1).is_some_and(|next| {
-                        next.is_ascii_alphabetic() || *next >= 128 || matches!(next, b'_' | b'$')
-                    })
-            }))
+    ];
+    prefixes.iter().any(|prefix| {
+        directives
+            .iter()
+            .any(|directive| source.contains(&format!("{prefix}{directive}")))
+    })
 }
 
 pub(crate) fn regex_can_start(before: &str) -> bool {

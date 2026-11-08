@@ -17,17 +17,17 @@ pnpm dev
 
 `rstack.config.ts` 配置了两条按顺序匹配的规则：`src/vendor.css` 归入 `vendor` 层，`src/index.css` 归入 `application` 层；`index.css` 中的 `@import "./vendor.css"` 会被注入 `layer(vendor)`。
 
-| 观察方式 | 预期效果 |
-| --- | --- |
-| 打开 DevTools 查看 `.box` | 同一选择器分别来自 `vendor` 与 `application` 两个层，可观察层叠优先级差异 |
-| 检查构建产物的 CSS | 可见 `@layer application` 包裹的规则与导入的 layer 标记 |
-| 把 `skipIfLayerExists` 改为 `false` | 可对比含命名 `@layer` 的 CSS 文件在两种配置下的产物差异 |
+| 观察方式                            | 预期效果                                                                  |
+| ----------------------------------- | ------------------------------------------------------------------------- |
+| 打开 DevTools 查看 `.box`           | 同一选择器分别来自 `vendor` 与 `application` 两个层，可观察层叠优先级差异 |
+| 检查构建产物的 CSS                  | 可见 `@layer application` 包裹的规则与导入的 layer 标记                   |
+| 把 `skipIfLayerExists` 改为 `false` | 可对比含命名 `@layer` 的 CSS 文件在两种配置下的产物差异                   |
 
 `src/index.css` 不要预先写命名 `@layer` 声明，否则默认的 `skipIfLayerExists: true` 会跳过包裹，示例就看不到分层效果。
 
 ## 关键文件
 
-- `rstack.config.ts`：注册 `StyleLayerRsbuild` 与多规则配置
+- `rstack.config.ts`：注册 `StyleLayerPluginRsbuild` 与多规则配置
 - `src/vendor.css`：模拟第三方样式
 - `src/index.css`：应用样式与 `@import`
 - `src/index.ts`：演示页面

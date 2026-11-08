@@ -6,7 +6,10 @@ use tree_sitter::Parser;
         jsx_directive(
             source.into(),
             "fixture.tsx".into(),
-            Some(TransformOptions::default()),
+            Some(TransformOptions {
+                prefix: Some(vec!["v-".into()]),
+                ..TransformOptions::default()
+            }),
         )
         .unwrap_or_else(|error| panic!("fixture should transform: {error}; source={source}"))
     }
@@ -110,7 +113,7 @@ use tree_sitter::Parser;
                 "first={first} onUpdateFirst={value => (update)(value)}",
             ),
             (
-                "<input type=\"checkbox\" :value={option} v-model={choices} />",
+                "<input type=\"checkbox\" v-bind:value={option} v-model={choices} />",
                 "checked={(choices).includes(option)}",
             ),
             (
@@ -152,45 +155,6 @@ use tree_sitter::Parser;
     }
 
     #[test]
-    fn 简写仅转换开标签属性并保持原始偏移() {
-        for (source, expected) in [
-            ("<div :title={title} />", "<div title={title} />"),
-            (
-                "const text = '<div :title={title}/>'; const view = <div :title={title} />",
-                "const text = '<div :title={title}/>'; const view = <div title={title} />",
-            ),
-            (
-                "/* <div :title={title}/> */ const view = <div :title={title} />",
-                "/* <div :title={title}/> */ const view = <div title={title} />",
-            ),
-            (
-                "<div title=\":literal\"> :text 'quote {ok && <span :title={title}/>}</div>",
-                "<div title=\":literal\"> :text 'quote {ok && <span title={title}/>}</div>",
-            ),
-            (
-                "const pattern = /<div :title/; const view = <div :title={title} />",
-                "const pattern = /<div :title/; const view = <div title={title} />",
-            ),
-            (
-                "const x = `<div :title/> ${<span :title={title}/>}`",
-                "const x = `<div :title/> ${<span title={title}/>}`",
-            ),
-            (
-                "const f = <T,>(x: T) => <div :title={title} />",
-                "const f = <T,>(x: T) => <div title={title} />",
-            ),
-        ] {
-            let result = transform_source(source);
-            assert_eq!(result.code, expected);
-            assert_tsx_parses(&result.code);
-        }
-        let source = "const small = a<b ? c : d; const view = <div v-if={ready} />";
-        let result = transform_source(source);
-        assert!(result.code.contains("a<b ? c : d"), "{}", result.code);
-        assert_tsx_parses(&result.code);
-    }
-
-    #[test]
     fn 内容指令替换原有子节点并处理冲突() {
         let html = transform_source("<div v-html={markup}><span>old</span></div>");
         assert_eq!(
@@ -213,7 +177,7 @@ use tree_sitter::Parser;
         assert_eq!(result.code, "<div title={title} {...(props)} />");
         assert_tsx_parses(&result.code);
         for source in [
-            "<div v-bind:title={title} :id={elementId} v-bind={props} className=\"literal\" />",
+            "<div v-bind:title={title} v-bind:id={elementId} v-bind={props} className=\"literal\" />",
             "<div v-bind:title=\"title\" />",
         ] {
             let result = transform_source(source);
@@ -335,7 +299,7 @@ use tree_sitter::Parser;
             "<div x-show={active} />".into(),
             "fixture.jsx".into(),
             Some(TransformOptions {
-                prefix: Some("x-".into()),
+                prefix: Some(vec!["x-".into()]),
                 formats: Some(vec![".jsx".into()]),
                 show_property: Some("visibility".into()),
                 show_true_value: Some("'visible'".into()),

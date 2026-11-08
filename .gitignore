@@ -138,11 +138,11 @@ dist
 # Turbo
 .turbo
 
-# Workbuddy
-.workbuddy/
+# ai
+.workbuddy
 
 # rsrack
-.rstack/
+.rstack
 
 # Native binaries（按平台生成，见 scripts/build-native.mjs）
 packages/*/native/*.node

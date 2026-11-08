@@ -7,7 +7,7 @@ import type { StyleLayerTransformConfig } from "../core/types";
 const styleFilePattern =
   /\.(?:css|scss|sass|less|styl|stylus|pcss|postcss)(?:\?.*)?$/i;
 
-export const StyleLayerRsbuild = (
+export const StyleLayerPluginRsbuild = (
   config: StyleLayerTransformConfig = {},
 ): RsbuildPlugin => ({
   name: "rsbuild-plugin-style-layer",

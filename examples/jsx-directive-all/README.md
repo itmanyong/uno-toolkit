@@ -15,20 +15,20 @@ pnpm dev
 
 ## 演示内容
 
-| 操作 | 预期效果 |
-| --- | --- |
-| 点击 `ready` / `loading` / `idle` | `v-if` / `v-else-if` / `v-else` 条件链只渲染对应分支 |
-| 点击「切换 v-show」 | 元素保留在 DOM 中，内联 `display` 在 `none` 与缺省之间切换 |
-| 观察显示控制区 | 已有 `style` 表达式的元素仍保留 `color`，并叠加 `v-show` 写入的 `display` |
-| 在文本框或 textarea 输入 | `v-text` 更新内容；隐式与显式 setter 的 `v-model` 同步更新 |
-| 观察内容与列表区 | `v-html` 注入 HTML；`v-for` 渲染列表，也可与 `v-if` 同用 |
-| 观察属性绑定区 | `v-bind` 展开对象，`v-bind:src` / `v-bind:alt` 绑定具名属性 |
-| 操作 checkbox、radio 和 select | 布尔值、数组、单选和多选模型同步更新 |
-| 编辑两个组件输入框 | 默认 `v-model` 和具名 `v-model:first` 更新各自的状态 |
+| 操作                              | 预期效果                                                                  |
+| --------------------------------- | ------------------------------------------------------------------------- |
+| 点击 `ready` / `loading` / `idle` | `x-if` / `x-else-if` / `x-else` 条件链只渲染对应分支                      |
+| 点击「切换 x-show」               | 元素保留在 DOM 中，内联 `display` 在 `none` 与缺省之间切换                |
+| 观察显示控制区                    | 已有 `style` 表达式的元素仍保留 `color`，并叠加 `x-show` 写入的 `display` |
+| 在文本框或 textarea 输入          | `x-text` 更新内容；隐式与显式 setter 的 `x-model` 同步更新                |
+| 观察内容与列表区                  | `x-html` 注入 HTML；`x-for` 渲染列表，也可与 `x-if` 同用                  |
+| 观察属性绑定区                    | `x-bind` 展开对象，`x-bind:src` / `x-bind:alt` 绑定具名属性               |
+| 操作 checkbox、radio 和 select    | 布尔值、数组、单选和多选模型同步更新                                      |
+| 编辑两个组件输入框                | 默认 `x-model` 和具名 `x-model:first` 更新各自的状态                      |
 
 转换器允许条件分支之间有换行与缩进（兼容 Prettier 等代码格式化工具）；本示例的 `src/App.tsx` 按目录约定把三个分支写在同一行。非空白文本、逗号或其他 JSX 节点会中断链条。
 
-`tsconfig.json` 的 `compilerOptions.types` 引入了包提供的 JSX 指令属性声明。`v-for` 的 `item` 由构建期创建，源码中的同名占位变量仅供 TypeScript 检查；组件模型的 props 需设为可选，因为属性由插件在编译期注入。
+`tsconfig.json` 的 `compilerOptions.types` 引入了包提供的 JSX 指令属性声明。`x-for` 的 `item` 由构建期创建，源码中的同名占位变量仅供 TypeScript 检查；组件模型的 props 需设为可选，因为属性由插件在编译期注入。
 
 ## 确认转换发生在构建期
 
@@ -36,7 +36,7 @@ pnpm dev
 
 ## 关键文件
 
-- `rstack.config.ts`：注册 `JsxDirectiveRsbuild`
+- `rstack.config.ts`：注册 `JsxDirectivePluginRsbuild`
 - `src/App.tsx`：各指令的可交互用法
 - `tsconfig.json`：JSX 指令类型声明
 

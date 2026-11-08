@@ -83,7 +83,7 @@ pub(crate) fn render_model(
     let Some((value, setter)) = model_binding(attribute, source) else {
         return invalid(
             warnings,
-            "v-model requires an identifier or [value, setter] expression",
+            "x-model requires an identifier or [value, setter] expression",
         );
     };
     let tag = node.child_by_field_name("name")?;
@@ -95,14 +95,18 @@ pub(crate) fn render_model(
             .find(|attr| {
                 let attr_name = attribute_name(**attr, source);
                 attr_name == Some(name)
-                    || attr_name == Some(&format!("{}bind:{name}", config.prefix))
-                    || attr_name == Some(&format!(":{name}"))
+                    || config.prefixes.iter().any(|prefix| {
+                        attr_name == Some(&format!("{}bind:{name}", prefix))
+                    })
             })
             .copied()
     };
     let read_value = |attr| {
         if attribute_name(attr, source).is_some_and(|name| {
-            name.starts_with(':') || name.starts_with(&format!("{}bind:", config.prefix))
+            config
+                .prefixes
+                .iter()
+                .any(|prefix| name.starts_with(&format!("{}bind:", prefix)))
         }) {
             directive_expression(attr, source)
         } else {
@@ -114,14 +118,14 @@ pub(crate) fn render_model(
     if custom {
         let property = argument.unwrap_or("modelValue");
         if !is_identifier(property) {
-            return invalid(warnings, "v-model requires a valid property name");
+            return invalid(warnings, "x-model requires a valid property name");
         }
         let mut chars = property.chars();
         let event = format!("onUpdate{}{}", chars.next()?.to_uppercase(), chars.as_str());
         if find(property).is_some() || find(&event).is_some() {
             return invalid(
                 warnings,
-                "v-model conflicts with an existing model property or update handler",
+                "x-model conflicts with an existing model property or update handler",
             );
         }
         let callback_value = fresh_parameter(source, "value");
@@ -141,7 +145,7 @@ pub(crate) fn render_model(
             .as_ref()
             .is_some_and(|value| !value.starts_with(['\'', '"']))
     {
-        return invalid(warnings, "v-model requires a static input type");
+        return invalid(warnings, "x-model requires a static input type");
     }
     let input_type = input_type
         .as_deref()
@@ -167,7 +171,7 @@ pub(crate) fn render_model(
             let Some(option) = find("value").and_then(read_value) else {
                 return invalid(
                     warnings,
-                    "v-model on radio inputs requires a value attribute",
+                    "x-model on radio inputs requires a value attribute",
                 );
             };
             ("checked", format!("({value}) === ({option})"), Some(option))
@@ -194,14 +198,14 @@ pub(crate) fn render_model(
         _ => {
             return invalid(
                 warnings,
-                "v-model supports input, textarea, select and custom components",
+                "x-model supports input, textarea, select and custom components",
             );
         }
     };
     if find(property).is_some() || find("onChange").is_some() {
         return invalid(
             warnings,
-            "v-model conflicts with an existing value, checked or onChange attribute",
+            "x-model conflicts with an existing value, checked or onChange attribute",
         );
     }
     let event_parameter = fresh_parameter(source, "event");
@@ -209,4 +213,3 @@ pub(crate) fn render_model(
     let handler = format!("{event_parameter} => ({setter})({update})");
     Some(format!("{property}={{{binding}}} onChange={{{handler}}}"))
 }
-

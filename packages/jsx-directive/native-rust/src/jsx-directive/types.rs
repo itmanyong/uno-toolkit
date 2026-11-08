@@ -5,7 +5,7 @@ use serde::Deserialize;
 #[napi(object)]
 #[derive(Clone, Default, Deserialize)]
 pub struct TransformOptions {
-    pub prefix: Option<String>,
+    pub prefix: Option<Vec<String>>,
     pub formats: Option<Vec<String>>,
     pub if_fallback: Option<String>,
     pub show_property: Option<String>,
@@ -40,7 +40,7 @@ pub struct SourceEdit {
 
 #[derive(Clone)]
 pub(crate) struct Config {
-    pub(crate) prefix: String,
+    pub(crate) prefixes: Vec<String>,
     pub(crate) formats: Vec<String>,
     pub(crate) if_fallback: String,
     pub(crate) show_property: String,
@@ -48,11 +48,27 @@ pub(crate) struct Config {
     pub(crate) show_false_value: String,
 }
 
+impl Config {
+    /// 尝试按任意已配置前缀剥离属性名，返回剩余后缀。
+    pub(crate) fn strip_prefix<'a>(&self, name: &'a str) -> Option<&'a str> {
+        self.prefixes
+            .iter()
+            .find_map(|prefix| name.strip_prefix(prefix.as_str()))
+    }
+
+    /// 判断属性名是否等于“任意前缀 + 指定后缀”。
+    pub(crate) fn matches_suffix(&self, name: &str, suffix: &str) -> bool {
+        self.prefixes
+            .iter()
+            .any(|prefix| name == format!("{prefix}{suffix}"))
+    }
+}
+
 impl From<Option<TransformOptions>> for Config {
     fn from(options: Option<TransformOptions>) -> Self {
         let options = options.unwrap_or_default();
         Self {
-            prefix: options.prefix.unwrap_or_else(|| "v-".into()),
+            prefixes: options.prefix.unwrap_or_else(|| vec!["x-".into()]),
             formats: options
                 .formats
                 .unwrap_or_else(|| vec!["jsx".into(), "tsx".into()]),

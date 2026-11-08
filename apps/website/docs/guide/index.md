@@ -34,12 +34,12 @@ pnpm add -D @uno-pc/jsx-directive
 ```ts
 // rstack.config.ts
 import { define } from "rstack";
-import { JsxDirectiveRsbuild } from "@uno-pc/jsx-directive/rsbuild";
+import { JsxDirectivePluginRsbuild } from "@uno-pc/jsx-directive/rsbuild";
 
 define.app(async () => {
   const { pluginReact } = await import("@rsbuild/plugin-react");
   return {
-    plugins: [pluginReact(), JsxDirectiveRsbuild()],
+    plugins: [pluginReact(), JsxDirectivePluginRsbuild()],
   };
 });
 ```
@@ -49,10 +49,10 @@ define.app(async () => {
 ```ts
 // vite.config.ts
 import { defineConfig } from "vite";
-import { JsxDirectiveVite } from "@uno-pc/jsx-directive/vite";
+import { JsxDirectivePluginVite } from "@uno-pc/jsx-directive/vite";
 
 export default defineConfig({
-  plugins: [JsxDirectiveVite()],
+  plugins: [JsxDirectivePluginVite()],
 });
 ```
 

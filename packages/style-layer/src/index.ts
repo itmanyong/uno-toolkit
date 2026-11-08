@@ -1,5 +1,5 @@
-export { StyleLayerRsbuild } from "./plugins/rsbuild";
-export { StyleLayerVite } from "./plugins/vite";
+export { StyleLayerPluginRsbuild } from "./plugins/rsbuild";
+export { StyleLayerPluginVite } from "./plugins/vite";
 export { resolveStyleLayer, transformStyleLayerImports } from "./core";
 export type {
   StyleLayerContext,

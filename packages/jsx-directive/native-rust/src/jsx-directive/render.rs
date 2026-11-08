@@ -93,7 +93,7 @@ pub(crate) fn render_opening_element(
         if name == "style" {
             style_attribute = Some(*attribute);
         }
-        let Some(suffix) = name.strip_prefix(&config.prefix) else {
+        let Some(suffix) = config.strip_prefix(name) else {
             continue;
         };
         if strip_own_condition && matches!(suffix, "if" | "else-if" | "else") {
@@ -135,11 +135,8 @@ pub(crate) fn render_opening_element(
         let Some(name) = attribute_name(*attribute, source) else {
             continue;
         };
-        let suffix = name.strip_prefix(&config.prefix).unwrap_or_default();
-        let replacement = if let Some(argument) = suffix
-            .strip_prefix("bind:")
-            .or_else(|| name.strip_prefix(':'))
-        {
+        let suffix = config.strip_prefix(name).unwrap_or_default();
+        let replacement = if let Some(argument) = suffix.strip_prefix("bind:") {
             v_bind::render_argument(argument, attribute, name, source, warnings)
         } else if suffix == "model" || suffix.starts_with("model:") {
             render_model(node, *attribute, &attrs, source, config, warnings)
@@ -189,4 +186,3 @@ pub(crate) fn render_opening_element(
         edits,
     ))
 }
-

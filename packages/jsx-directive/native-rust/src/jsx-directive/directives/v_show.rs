@@ -33,7 +33,7 @@ pub(crate) fn render_show(
         };
         if let (Some(style), None) = (style_attribute, style_text.as_ref()) {
             warnings.push(Warning {
-                message: "v-show requires style to be an expression, for example style={{ color: 'red' }}".into(),
+                message: "x-show requires style to be an expression, for example style={{ color: 'red' }}".into(),
                 start: style.start_byte() as u32,
                 end: style.end_byte() as u32,
             });

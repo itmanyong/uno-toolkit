@@ -12,7 +12,7 @@ Preact Signals React 的编译期转换插件。功能完全等同于官方`@pre
 | 三种模式        | `auto` 自动检测、`manual` 仅转换带标记的函数、`all` 转换所有包含 JSX 的组件。                                                                   |
 | 显式控制        | `@useSignals` 启用、`@noUseSignals` 排除，后者优先。                                                                                            |
 | 已编译 JSX 识别 | `detectTransformedJSX` 可识别 `jsx`、`jsxs`、`jsxDEV`、`createElement` 等调用。                                                                 |
-| 构建工具入口    | 导出 `SignalsTransformVite` 与 `SignalsTransformRsbuild`；包根入口另导出 `transformSignals`、`getSignalsFormats`、`reportWarnings` 及相关类型。 |
+| 构建工具入口    | 导出 `SignalsTransformPluginVite` 与 `SignalsTransformPluginRsbuild`；包根入口另导出 `transformSignals`、`getSignalsFormats`、`reportWarnings` 及相关类型。 |
 | 转换时机        | Vite 插件 `enforce: "pre"`，Rsbuild 插件 `order: "pre"`。                                                                                       |
 | 默认处理范围    | `.js`、`.jsx`、`.ts`、`.tsx`。                                                                                                                  |
 
@@ -57,12 +57,12 @@ pnpm add @preact/signals-react
 ```ts
 // rstack.config.ts
 import { define } from "rstack";
-import { SignalsTransformRsbuild } from "@uno-pc/signals-transform/rsbuild";
+import { SignalsTransformPluginRsbuild } from "@uno-pc/signals-transform/rsbuild";
 
 define.app(async () => {
   const { pluginReact } = await import("@rsbuild/plugin-react");
   return {
-    plugins: [pluginReact(), SignalsTransformRsbuild({ mode: "auto" })],
+    plugins: [pluginReact(), SignalsTransformPluginRsbuild({ mode: "auto" })],
   };
 });
 ```
@@ -72,11 +72,11 @@ define.app(async () => {
 ```ts
 // vite.config.ts
 import { defineConfig } from "vite";
-import { SignalsTransformVite } from "@uno-pc/signals-transform/vite";
+import { SignalsTransformPluginVite } from "@uno-pc/signals-transform/vite";
 
 export default defineConfig({
   plugins: [
-    SignalsTransformVite({
+    SignalsTransformPluginVite({
       mode: "auto",
       importSource: "@preact/signals-react/runtime",
     }),
@@ -101,14 +101,14 @@ export default defineConfig({
 
 ```ts
 import { define } from "rstack";
-import { SignalsTransformRsbuild } from "@uno-pc/signals-transform/rsbuild";
+import { SignalsTransformPluginRsbuild } from "@uno-pc/signals-transform/rsbuild";
 
 define.app(async () => {
   const { pluginReact } = await import("@rsbuild/plugin-react");
   return {
     plugins: [
       pluginReact(),
-      SignalsTransformRsbuild({
+      SignalsTransformPluginRsbuild({
         mode: "auto",
         importSource: "@preact/signals-react/runtime",
         formats: ["js", "jsx", "ts", "tsx"],

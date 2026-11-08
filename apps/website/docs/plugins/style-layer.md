@@ -13,7 +13,7 @@ CSS Cascade Layers 样式分层的构建期转换插件。完美解决第三方�
 | 多规则匹配   | `configs` 按顺序匹配，第一条命中的规则生效；规则继承外层配置，同名字段覆盖外层值。                                                          |
 | 动态层名     | `layerName` 可以是字符串，也可以是接收 `filePath`、`fileName`、`ext`、`code` 上下文并返回名称的函数。                                       |
 | 前置规则保护 | 直接处理 CSS 文件时保留 `@charset`、`@import`、`@namespace` 等前置规则；默认遇到已声明命名 `@layer` 的 CSS 时跳过包裹。                     |
-| 构建工具入口 | 导出 `StyleLayerVite` 与 `StyleLayerRsbuild`；包根入口另导出 `resolveStyleLayer`、`transformStyleLayerImports` 及相关类型。                 |
+| 构建工具入口 | 导出 `StyleLayerPluginVite` 与 `StyleLayerPluginRsbuild`；包根入口另导出 `resolveStyleLayer`、`transformStyleLayerImports` 及相关类型。                 |
 
 :::tip
 插件的 `transform` 钩子会接收 `css`、`scss`、`sass`、`less`、`styl`、`stylus`、`pcss`、`postcss` 等扩展名，但默认规则 `include` 只匹配 `.css`。需要处理其它预处理器文件时，必须显式配置 `include`。
@@ -40,11 +40,11 @@ pnpm add -D @uno-pc/style-layer
 ```ts
 // rstack.config.ts
 import { define } from "rstack";
-import { StyleLayerRsbuild } from "@uno-pc/style-layer/rsbuild";
+import { StyleLayerPluginRsbuild } from "@uno-pc/style-layer/rsbuild";
 
 define.app(() => ({
   plugins: [
-    StyleLayerRsbuild({
+    StyleLayerPluginRsbuild({
       include: "**/src/**/*.css",
       layerName: "application",
     }),
@@ -57,11 +57,11 @@ define.app(() => ({
 ```ts
 // vite.config.ts
 import { defineConfig } from "vite";
-import { StyleLayerVite } from "@uno-pc/style-layer/vite";
+import { StyleLayerPluginVite } from "@uno-pc/style-layer/vite";
 
 export default defineConfig({
   plugins: [
-    StyleLayerVite({
+    StyleLayerPluginVite({
       exclude: [],
       configs: [
         {
@@ -98,11 +98,11 @@ export default defineConfig({
 
 ```ts
 import { define } from "rstack";
-import { StyleLayerRsbuild } from "@uno-pc/style-layer/rsbuild";
+import { StyleLayerPluginRsbuild } from "@uno-pc/style-layer/rsbuild";
 
 define.app(() => ({
   plugins: [
-    StyleLayerRsbuild({
+    StyleLayerPluginRsbuild({
       configs: [
         { include: "**/src/vendor.css", layerName: "vendor" },
         { include: "**/src/**/*.css", layerName: "application" },

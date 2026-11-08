@@ -16,24 +16,25 @@ export interface JsxDirectiveAttributes {
   "v-model"?: unknown;
   [attribute: `v-model:${string}`]: unknown;
   "v-model:name"?: unknown;
-  [attribute: `:${string}`]: unknown;
 }
 
 export interface DirectiveTransformOptions {
-  prefix?: string;
+  prefix?: string | string[];
   formats?: string[];
-  ifFallback?: string;
-  show?: {
+  vIf?: {
+    notFallback?: string;
+  };
+  vShow?: {
     property?: string;
-    whenTrue?: string;
-    whenFalse?: string;
+    whenTrueValue?: string;
+    whenFalseValue?: string;
   };
 }
 
 export type DirectiveTransformConfig = DirectiveTransformOptions;
 
 export interface NativeDirectiveTransformOptions {
-  prefix?: string;
+  prefix?: string[];
   formats?: string[];
   ifFallback?: string;
   showProperty?: string;

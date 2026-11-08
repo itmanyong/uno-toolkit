@@ -20,7 +20,7 @@ export interface SourceEdit {
 }
 
 export interface NativeDirectiveTransformOptions {
-  prefix?: string;
+  prefix?: string[];
   formats?: string[];
   ifFallback?: string;
   showProperty?: string;

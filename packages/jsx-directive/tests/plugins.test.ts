@@ -1,7 +1,7 @@
 import { expect, test } from "rstack/test";
 import type { Plugin } from "vite";
-import { JsxDirectiveRsbuild } from "../src/plugins/rsbuild";
-import { JsxDirectiveVite } from "../src/plugins/vite";
+import { JsxDirectivePluginRsbuild } from "../src/plugins/rsbuild";
+import { JsxDirectivePluginVite } from "../src/plugins/vite";
 
 const invokeTransform = (
   plugin: Plugin,
@@ -24,11 +24,11 @@ type RsbuildTransform = (input: {
   resourcePath: string;
 }) => string | { code: string; map: null };
 
-const setupRsbuild = (config?: Parameters<typeof JsxDirectiveRsbuild>[0]) => {
+const setupRsbuild = (config?: Parameters<typeof JsxDirectivePluginRsbuild>[0]) => {
   let registration:
     { test: RegExp; order?: string; transform: RsbuildTransform } | undefined;
   const warnings: string[] = [];
-  const plugin = JsxDirectiveRsbuild(config);
+  const plugin = JsxDirectivePluginRsbuild(config);
   const api = {
     transform: (
       options: { test: RegExp; order?: string },
@@ -48,8 +48,8 @@ const setupRsbuild = (config?: Parameters<typeof JsxDirectiveRsbuild>[0]) => {
 test("使用 Vite 插件即启用 JSX 指令转换", () => {
   expect(
     invokeTransform(
-      JsxDirectiveVite(),
-      "<div v-show={visible} />",
+      JsxDirectivePluginVite(),
+      "<div x-show={visible} />",
       "component.tsx",
     ),
   ).toEqual({
@@ -61,7 +61,7 @@ test("使用 Vite 插件即启用 JSX 指令转换", () => {
 test("Vite 插件接收转换配置", () => {
   expect(
     invokeTransform(
-      JsxDirectiveVite({ prefix: "x-" }),
+      JsxDirectivePluginVite({ prefix: "x-" }),
       "<div x-show={visible} />",
       "component.tsx",
     ),
@@ -72,8 +72,8 @@ test("Vite 插件接收转换配置", () => {
 });
 
 test("Vite 插件只处理配置的扩展名，未变化时返回 null", () => {
-  const plugin = JsxDirectiveVite({ formats: [".JSX"] });
-  const source = "<div v-show={visible} />";
+  const plugin = JsxDirectivePluginVite({ formats: [".JSX"] });
+  const source = "<div x-show={visible} />";
 
   expect(invokeTransform(plugin, source, "component.tsx")).toBeNull();
   expect(invokeTransform(plugin, "<div />", "component.jsx")).toBeNull();
@@ -81,19 +81,19 @@ test("Vite 插件只处理配置的扩展名，未变化时返回 null", () => {
     code: expect.stringContaining('["display"]'),
   });
   expect(
-    invokeTransform(JsxDirectiveVite({ formats: [] }), source, "component.tsx"),
+    invokeTransform(JsxDirectivePluginVite({ formats: [] }), source, "component.tsx"),
   ).toBeNull();
 });
 
 test("Vite 插件在没有代码改动时仍报告带行列的警告", () => {
   const warnings: string[] = [];
-  const source = 'const label = "你好";\n<div v-else />';
+  const source = 'const label = "你好";\n<div x-else />';
 
   expect(
-    invokeTransform(JsxDirectiveVite(), source, "component.tsx", warnings),
+    invokeTransform(JsxDirectivePluginVite(), source, "component.tsx", warnings),
   ).toBeNull();
   expect(warnings).toEqual([
-    expect.stringMatching(/^component\.tsx:2:6: Orphaned v-else directive:/),
+    expect.stringMatching(/^component\.tsx:2:6: Orphaned x-else directive:/),
   ]);
 });
 
@@ -102,7 +102,7 @@ test("使用 Rsbuild 插件即注册 JSX 指令转换", () => {
 
   expect(
     registration.transform({
-      code: "<div v-show={visible} />",
+      code: "<div x-show={visible} />",
       resourcePath: "component.tsx",
     }),
   ).toEqual({
@@ -136,20 +136,20 @@ test("Rsbuild 插件按配置筛选格式并传递前缀", () => {
 
 test("Rsbuild 插件对未变化代码返回原文并报告带行列的警告", () => {
   const { registration, warnings } = setupRsbuild();
-  const source = 'const label = "你好";\n<div v-else />';
+  const source = 'const label = "你好";\n<div x-else />';
 
   expect(
     registration.transform({ code: source, resourcePath: "component.tsx" }),
   ).toBe(source);
   expect(warnings).toEqual([
-    expect.stringMatching(/^component\.tsx:2:6: Orphaned v-else directive:/),
+    expect.stringMatching(/^component\.tsx:2:6: Orphaned x-else directive:/),
   ]);
 });
 
 test("有代码变化时输出 source map（UTF-16 偏移对齐）", () => {
   const source =
-    'const label = "你好";\nconst A = () => <div v-show={visible} />;';
-  const hook = JsxDirectiveVite().transform;
+    'const label = "你好";\nconst A = () => <div x-show={visible} />;';
+  const hook = JsxDirectivePluginVite().transform;
   if (!hook) throw new Error("缺少 transform hook");
   const handler = typeof hook === "function" ? hook : hook.handler;
   const result = Reflect.apply(handler, {}, [source, "A.tsx"]) as {

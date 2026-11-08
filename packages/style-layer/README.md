@@ -21,12 +21,12 @@ pnpm add -D @uno-pc/style-layer
 ### Vite
 
 ```ts
-import { StyleLayerVite } from "@uno-pc/style-layer/vite";
+import { StyleLayerPluginVite } from "@uno-pc/style-layer/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [
-    StyleLayerVite({
+    StyleLayerPluginVite({
       exclude: [],
       configs: [
         {
@@ -45,11 +45,11 @@ export default defineConfig({
 
 ```ts
 import { defineConfig } from "@rsbuild/core";
-import { StyleLayerRsbuild } from "@uno-pc/style-layer/rsbuild";
+import { StyleLayerPluginRsbuild } from "@uno-pc/style-layer/rsbuild";
 
 export default defineConfig({
   plugins: [
-    StyleLayerRsbuild({
+    StyleLayerPluginRsbuild({
       include: "**/src/**/*.css",
       layerName: "application",
     }),

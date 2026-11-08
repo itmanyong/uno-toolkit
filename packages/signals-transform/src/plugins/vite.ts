@@ -3,7 +3,7 @@ import { getSignalsFormats, transformSignals } from "../core";
 import type { SignalsTransformConfig } from "../types";
 import { reportWarnings } from "../shared/warnings";
 
-export const SignalsTransformVite = (
+export const SignalsTransformPluginVite = (
   config: SignalsTransformConfig = {},
 ): Plugin => {
   return {

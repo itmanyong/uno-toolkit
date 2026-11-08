@@ -14,7 +14,7 @@
 | 选择器识别   | 命中文本构成完整选择器、紧跟声明块且位于选择器位置时，按选择器处理：`replace` 替换整个声明块，`append` 在声明块末尾追加。               |
 | 追加去重     | 选择器 `append` 会先移除声明块内与 `rewrite` 同名的旧声明，再追加新样式；厂商前缀、自定义属性、`!important` 都有明确判定规则。           |
 | 单行压缩     | 匹配前整文件压缩成一行（去注释、折叠空白），命中的文件写回压缩后的单行 CSS；未命中的文件保持原样。                                      |
-| 构建工具入口 | 导出 `StyleRewriteVite` 与 `StyleRewriteRsbuild`；包根入口另导出 `transformStyleRewrite`、`resolveStyleRewriteConfigs`、`minifyCss` 及相关类型。 |
+| 构建工具入口 | 导出 `StyleRewritePluginVite` 与 `StyleRewritePluginRsbuild`；包根入口另导出 `transformStyleRewrite`、`resolveStyleRewriteConfigs`、`minifyCss` 及相关类型。 |
 
 :::tip
 `matchReg` 跑在压缩后的单行 CSS 上，所以不要写成 `color: red` 这种带空格或换行的形态——压缩结果里是 `color:red`。需要保留空格时改用正则，例如 `color:\s*red`。
@@ -41,22 +41,22 @@ pnpm add -D @uno-pc/style-rewrite
 ```ts
 // rstack.config.ts
 import { define } from "rstack";
-import { StyleRewriteRsbuild } from "@uno-pc/style-rewrite/rsbuild";
+import { StyleRewritePluginRsbuild } from "@uno-pc/style-rewrite/rsbuild";
 
 define.app(() => ({
   plugins: [
-    StyleRewriteRsbuild({
+    StyleRewritePluginRsbuild({
       configs: [
         {
-          pathReg: "**/node_modules/**/*.css",
-          matchReg: [".ant-btn", ".ant-input"],
-          rewrite: "border-radius: 8px",
+          matchPathReg: "**/node_modules/**/*.css",
+          rewriteMatchReg: [".ant-btn", ".ant-input"],
+          rewriteContent: "border-radius: 8px",
           rewriteType: "append",
         },
         {
-          pathReg: "**/src/**/*.css",
-          matchReg: "#1677ff",
-          rewrite: "var(--primary-color)",
+          matchPathReg: "**/src/**/*.css",
+          rewriteMatchReg: "#1677ff",
+          rewriteContent: "var(--primary-color)",
         },
       ],
     }),
@@ -69,16 +69,16 @@ define.app(() => ({
 ```ts
 // vite.config.ts
 import { defineConfig } from "vite";
-import { StyleRewriteVite } from "@uno-pc/style-rewrite/vite";
+import { StyleRewritePluginVite } from "@uno-pc/style-rewrite/vite";
 
 export default defineConfig({
   plugins: [
-    StyleRewriteVite({
+    StyleRewritePluginVite({
       configs: [
         {
-          pathReg: ["**/src/theme.css", /legacy\.css$/],
-          matchReg: ".card",
-          rewrite: "padding: 24px",
+          matchPathReg: ["**/src/theme.css", /legacy\.css$/],
+          rewriteMatchReg: ".card",
+          rewriteContent: "padding: 24px",
           rewriteType: "append",
         },
       ],
@@ -96,9 +96,13 @@ export default defineConfig({
 | `matchReg`    | —                                | 需要命中的内容，支持数组。                                   |
 | `rewrite`     | —                                | 命中内容要替换为的目标内容。                                 |
 | `rewriteType` | `"replace"`                      | `replace` 替换覆写；`append` 追加内容。                      |
-| `enforce`     | Vite：`"post"`；Rsbuild：`"pre"` | 设置样式转换顺序。                                           |
+| `enforce`     | Vite：`"post"`；Rsbuild：`"pre"` | `transform` 模式的样式转换顺序。                             |
+| `mode`        | `"transform"`                    | `transform` 在源文件阶段改写；`asset` 在产物阶段改写最终 CSS。 |
+| `assetStage`  | `"summarize"`                    | `asset` 模式读取产物的时机，可选 `additions`、`optimize-size`、`summarize`、`optimize-transfer`。 |
 
 `pathReg` 支持正则表达式、路径片段字符串，以及 `*`、`**` 通配符，也可以传数组同时匹配多个路径。
+
+`transform` 模式下 `pathReg` 匹配源码路径；`asset` 模式下匹配产物文件名。
 
 ## 匹配与改写规则
 
@@ -127,11 +131,11 @@ export default defineConfig({
 
 | 配置                                                                        | 结果                        |
 | --------------------------------------------------------------------------- | --------------------------- |
-| `{ matchReg: ".btn", rewrite: "color:blue" }`                                | `.btn{color:blue}`          |
-| `{ matchReg: ".btn", rewrite: "color:blue", rewriteType: "append" }`         | `.btn{color:blue}`          |
-| `{ matchReg: ".btn", rewrite: "padding:0", rewriteType: "append" }`          | `.btn{color:red;padding:0}` |
-| `{ matchReg: "color:red", rewrite: "color:blue" }`                           | `.btn{color:blue}`          |
-| `{ matchReg: "color:red", rewrite: ";padding:0", rewriteType: "append" }`    | `.btn{color:red;padding:0}` |
+| `{ rewriteMatchReg: ".btn", rewriteContent: "color:blue" }`                                | `.btn{color:blue}`          |
+| `{ rewriteMatchReg: ".btn", rewriteContent: "color:blue", rewriteType: "append" }`         | `.btn{color:blue}`          |
+| `{ rewriteMatchReg: ".btn", rewriteContent: "padding:0", rewriteType: "append" }`          | `.btn{color:red;padding:0}` |
+| `{ rewriteMatchReg: "color:red", rewriteContent: "color:blue" }`                           | `.btn{color:blue}`          |
+| `{ rewriteMatchReg: "color:red", rewriteContent: ";padding:0", rewriteType: "append" }`    | `.btn{color:red;padding:0}` |
 
 按文本追加时插件不会自动补分隔符，需要自己在 `rewrite` 里带上 `;`。
 
@@ -146,6 +150,29 @@ export default defineConfig({
 - 嵌套规则（如 `&:hover{...}`）与无法解析成 `属性名: 值` 的片段原样保留，不参与比较。
 - 没有移除任何声明时其余声明保持原有顺序；`rewrite` 不含属性名（例如只是值片段）时只追加、不移除。
 
+### 产物阶段改写（`mode: "asset"`）
+
+默认的 `transform` 模式只能看到源文件。若目标样式由 postcss 在构建后段生成——例如 Panda CSS、Tailwind 的 postcss 插件——`transform` 拿到的仍是源文件内容，改不到最终样式。此时改用产物阶段：
+
+```ts
+StyleRewritePluginRsbuild({
+  mode: "asset",
+  configs: [
+    {
+      matchPathReg: "**/static/css/**/*.css",
+      rewriteMatchReg: ".light{",
+      rewriteContent: ".light,.light .chakra-theme:not(.dark){",
+    },
+  ],
+});
+```
+
+- Rsbuild 走 `api.processAssets`，Vite 走 `generateBundle`，都在 CSS 已生成、已压缩之后读取资源。
+- `pathReg` 匹配的是产物文件名（如 `static/css/index.<hash>.css`），不是源码路径。
+- 读到的内容是压缩后的单行 CSS，`matchReg` 要按压缩形态书写；改选择器时把 `{` 一起写进 `matchReg`，让它按文本替换而不是声明块替换。
+- 只在生产构建生效：开发模式下样式由运行时注入，没有可读写的 CSS 资源。
+- 改写发生在内容哈希计算之前，产物文件名里的 hash 会随改写结果变化。
+
 ## 完整使用示例
 
 以下代码来自可运行示例 [`examples/style-rewrite-all`](/guide/examples)，用五条规则演示选择器替换、选择器追加去重、文本替换与正则匹配。
@@ -154,39 +181,39 @@ export default defineConfig({
 
 ```ts
 import { define } from "rstack";
-import { StyleRewriteRsbuild } from "@uno-pc/style-rewrite/rsbuild";
+import { StyleRewritePluginRsbuild } from "@uno-pc/style-rewrite/rsbuild";
 
 define.app(() => ({
   plugins: [
-    StyleRewriteRsbuild({
+    StyleRewritePluginRsbuild({
       configs: [
         {
-          pathReg: "**/src/vendor.css",
-          matchReg: ".card",
-          rewrite: "padding: 24px",
+          matchPathReg: "**/src/vendor.css",
+          rewriteMatchReg: ".card",
+          rewriteContent: "padding: 24px",
           rewriteType: "append",
         },
         {
-          pathReg: "**/src/index.css",
-          matchReg: ".btn",
-          rewrite:
+          matchPathReg: "**/src/index.css",
+          rewriteMatchReg: ".btn",
+          rewriteContent:
             "background: #8ab4f8;color: #020917;border: 0;padding: 10px 16px;border-radius: 8px",
           rewriteType: "replace",
         },
         {
-          pathReg: ["**/src/vendor.css", "**/src/index.css"],
-          matchReg: "#f28b82",
-          rewrite: "#fdd663",
+          matchPathReg: ["**/src/vendor.css", "**/src/index.css"],
+          rewriteMatchReg: "#f28b82",
+          rewriteContent: "#fdd663",
         },
         {
-          pathReg: "**/src/index.css",
-          matchReg: "border-left:\\s*4px",
-          rewrite: "border-left: 6px",
+          matchPathReg: "**/src/index.css",
+          rewriteMatchReg: "border-left:\\s*4px",
+          rewriteContent: "border-left: 6px",
         },
         {
-          pathReg: "**/src/**/*.css",
-          matchReg: ".content",
-          rewrite: "line-height: 1.6",
+          matchPathReg: "**/src/**/*.css",
+          rewriteMatchReg: ".content",
+          rewriteContent: "line-height: 1.6",
           rewriteType: "append",
         },
       ],
@@ -265,6 +292,7 @@ pnpm dev
 - 选择器 `replace` 会丢掉该选择器内的全部原有声明（包括嵌套规则），确认无副作用后再用。
 - 文本 `append` 不补分隔符；选择器 `append` 会自动处理分隔符。
 - 未命中任何规则的文件不写回，构建产物保持原始排版。
+- `mode: "asset"` 只在构建阶段生效，开发模式下样式走运行时注入，改写不会出现在页面上；需要开发期也生效时，改在源文件里覆盖或另用 postcss 插件。
 
 ## 可运行示例
 

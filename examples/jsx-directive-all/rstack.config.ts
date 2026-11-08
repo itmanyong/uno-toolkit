@@ -1,5 +1,5 @@
 import { define } from "rstack";
-import { JsxDirectiveRsbuild } from "@uno-pc/jsx-directive/rsbuild";
+import { JsxDirectivePluginRsbuild } from "@uno-pc/jsx-directive/rsbuild";
 
 define.app(async () => {
   const { pluginReact } = await import("@rsbuild/plugin-react");
@@ -7,14 +7,16 @@ define.app(async () => {
     // 生产也输出 source map：验证 jsx-directive 的 transform map 全链路。
     output: { sourceMap: true },
     plugins: [
-      JsxDirectiveRsbuild({
-        prefix: "v-",
+      JsxDirectivePluginRsbuild({
+        prefix: "x-",
         formats: ["jsx", "tsx"],
-        ifFallback: "null",
-        show: {
+        vIf: {
+          notFallback: "null",
+        },
+        vShow: {
           property: "display",
-          whenTrue: "undefined",
-          whenFalse: "'none'",
+          whenTrueValue: "undefined",
+          whenFalseValue: "'none'",
         },
       }),
       pluginReact({

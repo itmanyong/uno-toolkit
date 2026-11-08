@@ -31,7 +31,7 @@ pub(crate) fn directive_for(
         let Some(name) = attribute_name(attribute, source) else {
             continue;
         };
-        let Some(suffix) = name.strip_prefix(&config.prefix) else {
+        let Some(suffix) = config.strip_prefix(name) else {
             continue;
         };
         match suffix {
@@ -72,7 +72,7 @@ pub(crate) fn warn_orphan(
         let Some(name) = attribute_name(attribute, source) else {
             continue;
         };
-        if name == format!("{}else", config.prefix) || name == format!("{}else-if", config.prefix) {
+        if config.matches_suffix(name, "else") || config.matches_suffix(name, "else-if") {
             warnings.push(Warning {
                 message: format!(
                     "Orphaned {name} directive: no adjacent preceding conditional branch"

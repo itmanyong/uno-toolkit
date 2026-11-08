@@ -16,7 +16,6 @@ interface JsxDirectiveAttributes {
   [attribute: `v-model:${string}`]: unknown;
   "v-model"?: unknown;
   "v-model:name"?: unknown;
-  [attribute: `:${string}`]: unknown;
 }
 
 declare module "react" {

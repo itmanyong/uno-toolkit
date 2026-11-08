@@ -14,13 +14,13 @@ pub(crate) fn check_conflict(
 ) -> (bool, bool) {
     let has_html = attrs
         .iter()
-        .any(|attr| attribute_name(*attr, source) == Some(&format!("{}html", config.prefix)));
+        .any(|attr| config.matches_suffix(attribute_name(*attr, source).unwrap_or_default(), "html"));
     let has_text = attrs
         .iter()
-        .any(|attr| attribute_name(*attr, source) == Some(&format!("{}text", config.prefix)));
+        .any(|attr| config.matches_suffix(attribute_name(*attr, source).unwrap_or_default(), "text"));
     if has_html && has_text {
         warnings.push(Warning {
-            message: "v-html and v-text cannot be used together".into(),
+            message: "x-html and x-text cannot be used together".into(),
             start: node.start_byte() as u32,
             end: node.end_byte() as u32,
         });
@@ -65,10 +65,10 @@ pub(crate) fn push_content_children_edits(
         if let Some(opening) = opening_element(node) {
             let attrs = attributes(opening);
             let html = attrs.iter().find(|attr| {
-                attribute_name(**attr, source) == Some(&format!("{}html", config.prefix))
+                config.matches_suffix(attribute_name(**attr, source).unwrap_or_default(), "html")
             });
             let text = attrs.iter().find(|attr| {
-                attribute_name(**attr, source) == Some(&format!("{}text", config.prefix))
+                config.matches_suffix(attribute_name(**attr, source).unwrap_or_default(), "text")
             });
             if html.is_some() != text.is_some() {
                 let attribute = *html.or(text).expect("one content directive");
